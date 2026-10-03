@@ -1,0 +1,36 @@
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+.env
+
+# Streamlit
+.streamlit/secrets.toml
+
+# Personal resumes / uploaded files
+*.pdf
+*.docx
+
+# Trained models
+models/
+*.safetensors
+*.bin
+*.pt
+*.pth
+
+# Local datasets / generated data
+data/raw/
+data/processed/
+
+# Logs
+*.log
+
+# OS
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/
+# Backup files
+*_backup.py

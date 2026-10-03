@@ -1,0 +1,4 @@
+Model,Accuracy,Spearman
+TF-IDF + Cosine,57.5,0.8849
+MiniLM + Cosine,85.0,0.9099
+BERT + Cosine,60.0,0.7079

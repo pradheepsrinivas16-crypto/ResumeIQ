@@ -1,0 +1,6 @@
+Model,Accuracy,Weighted_F1
+TF-IDF + SVM,72.12,71.0
+Sentence Transformer + SVM,74.8,73.0
+CNN,67.83,64.0
+LSTM,10.72,10.0
+BERT,79.36,77.38
