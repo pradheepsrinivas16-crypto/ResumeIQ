@@ -1,15 +1,14 @@
+import streamlit as st
 from sentence_transformers import SentenceTransformer
 from sklearn.metrics.pairwise import cosine_similarity
 
 
-# Load Sentence Transformer model
 MODEL_NAME = "all-MiniLM-L6-v2"
 
-print("Loading Sentence Transformer...")
 
-model = SentenceTransformer(MODEL_NAME)
-
-print("Sentence Transformer loaded!")
+@st.cache_resource
+def get_sentence_transformer():
+    return SentenceTransformer(MODEL_NAME)
 
 
 def calculate_match_score(resume_text, job_description):
@@ -19,6 +18,7 @@ def calculate_match_score(resume_text, job_description):
     """
 
     # Convert resume and job description into embeddings
+    model = get_sentence_transformer()
     resume_embedding = model.encode([resume_text])
     job_embedding = model.encode([job_description])
 

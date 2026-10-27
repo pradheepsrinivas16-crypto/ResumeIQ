@@ -228,29 +228,54 @@ The repository contains a manually labelled 40-pair compatibility benchmark:
 
 The current compatibility pipeline was evaluated using the real screening engine.
 
-### Current benchmark result
+### Compatibility benchmark
 
-- **40 labelled resume/JD pairs**
-- Good: 16
-- Partial: 13
-- Poor: 11
-- Overall classification accuracy: **82.50%**
+A 40-pair proof-of-concept compatibility benchmark was created to evaluate the
+screening engine on structured, skill-oriented resume and job-description
+examples.
 
-The benchmark uses three labels:
+Benchmark distribution:
+
+- **Good:** 16
+- **Partial:** 13
+- **Poor:** 11
+- **Total:** 40 pairs
+
+The benchmark uses three compatibility labels:
 
 - `good`
 - `partial`
 - `poor`
 
-Current score interpretation in the evaluation script:
+This benchmark is intended for **proof-of-concept evaluation only**. The
+resume and job-description inputs are structured around explicit skills and
+requirements rather than representing a large collection of natural,
+real-world application documents.
 
-- `>= 70` → good
-- `50–69.99` → partial
-- `< 50` → poor
+The resulting **82.50% classification accuracy** is therefore not presented
+as real-world resume-screening accuracy. It demonstrates that the compatibility
+pipeline can distinguish the three structured compatibility cases used in this
+experimental benchmark.
 
-This is a small manually labelled proof-of-concept benchmark, not a production hiring validation study. Partial examples show overlap with the score thresholds, so further evaluation with a larger and independently labelled dataset would be valuable.
+### Additional resume–JD evaluation
 
----
+A second benchmark containing **180 real resume/JD pairs** was constructed
+across six job roles:
+
+- Data Analyst
+- Software Engineer
+- Machine Learning Engineer
+- HR Specialist
+- Marketing Specialist
+- Financial Analyst
+
+Preliminary compatibility labels were generated for exploratory analysis.
+Because these labels were not independently human-validated and the resulting
+dataset contains no `good` examples, it is **not used as ground truth for
+accuracy reporting**.
+
+These compatibility evaluations are therefore reported separately from the
+validated BERT resume-category classification results.
 
 # Dataset
 

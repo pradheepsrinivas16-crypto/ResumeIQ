@@ -1,0 +1,181 @@
+pair_id,job_id,job_title,resume_category,semantic_score,skill_score,preliminary_label
+P001,JD001,Data Analyst,FINANCE,36.9,8.33,poor
+P002,JD001,Data Analyst,INFORMATION-TECHNOLOGY,28.69,8.33,poor
+P003,JD001,Data Analyst,ACCOUNTANT,33.98,0.0,poor
+P004,JD001,Data Analyst,FINANCE,33.22,16.67,poor
+P005,JD001,Data Analyst,INFORMATION-TECHNOLOGY,22.43,0.0,poor
+P006,JD001,Data Analyst,ACCOUNTANT,27.48,8.33,poor
+P007,JD001,Data Analyst,INFORMATION-TECHNOLOGY,21.26,0.0,poor
+P008,JD001,Data Analyst,INFORMATION-TECHNOLOGY,26.34,8.33,poor
+P009,JD001,Data Analyst,FINANCE,23.87,0.0,poor
+P010,JD001,Data Analyst,ACCOUNTANT,37.11,8.33,poor
+P011,JD001,Data Analyst,CONSULTANT,23.17,0.0,poor
+P012,JD001,Data Analyst,BANKING,28.68,0.0,poor
+P013,JD001,Data Analyst,BANKING,27.11,8.33,poor
+P014,JD001,Data Analyst,BANKING,27.86,16.67,poor
+P015,JD001,Data Analyst,CONSULTANT,20.02,0.0,poor
+P016,JD001,Data Analyst,BANKING,16.1,0.0,poor
+P017,JD001,Data Analyst,BANKING,27.04,0.0,poor
+P018,JD001,Data Analyst,CONSULTANT,52.33,41.67,partial
+P019,JD001,Data Analyst,BANKING,35.0,16.67,poor
+P020,JD001,Data Analyst,CONSULTANT,35.75,0.0,poor
+P021,JD001,Data Analyst,HR,25.19,16.67,poor
+P022,JD001,Data Analyst,DIGITAL-MEDIA,25.51,8.33,poor
+P023,JD001,Data Analyst,SALES,21.81,8.33,poor
+P024,JD001,Data Analyst,AVIATION,13.89,0.0,poor
+P025,JD001,Data Analyst,SALES,27.83,0.0,poor
+P026,JD001,Data Analyst,PUBLIC-RELATIONS,12.94,8.33,poor
+P027,JD001,Data Analyst,CHEF,7.71,8.33,poor
+P028,JD001,Data Analyst,TEACHER,10.97,0.0,poor
+P029,JD001,Data Analyst,APPAREL,18.98,8.33,poor
+P030,JD001,Data Analyst,PUBLIC-RELATIONS,18.89,0.0,poor
+P031,JD002,Software Engineer,INFORMATION-TECHNOLOGY,29.75,0.0,poor
+P032,JD002,Software Engineer,INFORMATION-TECHNOLOGY,27.77,0.0,poor
+P033,JD002,Software Engineer,ENGINEERING,29.14,0.0,poor
+P034,JD002,Software Engineer,ENGINEERING,34.87,12.5,poor
+P035,JD002,Software Engineer,INFORMATION-TECHNOLOGY,23.1,25.0,poor
+P036,JD002,Software Engineer,ENGINEERING,32.52,0.0,poor
+P037,JD002,Software Engineer,INFORMATION-TECHNOLOGY,30.1,0.0,poor
+P038,JD002,Software Engineer,ENGINEERING,29.94,12.5,poor
+P039,JD002,Software Engineer,INFORMATION-TECHNOLOGY,18.35,12.5,poor
+P040,JD002,Software Engineer,ENGINEERING,23.34,0.0,poor
+P041,JD002,Software Engineer,DESIGNER,36.97,0.0,poor
+P042,JD002,Software Engineer,DESIGNER,40.81,0.0,partial
+P043,JD002,Software Engineer,DESIGNER,32.87,0.0,poor
+P044,JD002,Software Engineer,DESIGNER,24.85,0.0,poor
+P045,JD002,Software Engineer,CONSULTANT,39.2,0.0,poor
+P046,JD002,Software Engineer,DESIGNER,24.54,0.0,poor
+P047,JD002,Software Engineer,CONSULTANT,8.81,0.0,poor
+P048,JD002,Software Engineer,AUTOMOBILE,9.17,12.5,poor
+P049,JD002,Software Engineer,CONSULTANT,25.66,12.5,poor
+P050,JD002,Software Engineer,CONSULTANT,29.03,50.0,partial
+P051,JD002,Software Engineer,FITNESS,14.25,0.0,poor
+P052,JD002,Software Engineer,BANKING,19.03,0.0,poor
+P053,JD002,Software Engineer,CHEF,14.61,0.0,poor
+P054,JD002,Software Engineer,CHEF,31.29,0.0,poor
+P055,JD002,Software Engineer,DIGITAL-MEDIA,22.98,0.0,poor
+P056,JD002,Software Engineer,HR,15.62,0.0,poor
+P057,JD002,Software Engineer,BUSINESS-DEVELOPMENT,17.97,12.5,poor
+P058,JD002,Software Engineer,DIGITAL-MEDIA,16.68,0.0,poor
+P059,JD002,Software Engineer,DIGITAL-MEDIA,24.46,0.0,poor
+P060,JD002,Software Engineer,BANKING,15.72,0.0,poor
+P061,JD003,Machine Learning Engineer,INFORMATION-TECHNOLOGY,27.54,0.0,poor
+P062,JD003,Machine Learning Engineer,INFORMATION-TECHNOLOGY,22.67,0.0,poor
+P063,JD003,Machine Learning Engineer,ENGINEERING,20.89,0.0,poor
+P064,JD003,Machine Learning Engineer,ENGINEERING,27.19,0.0,poor
+P065,JD003,Machine Learning Engineer,INFORMATION-TECHNOLOGY,19.36,7.69,poor
+P066,JD003,Machine Learning Engineer,ENGINEERING,36.52,0.0,poor
+P067,JD003,Machine Learning Engineer,INFORMATION-TECHNOLOGY,21.72,0.0,poor
+P068,JD003,Machine Learning Engineer,ENGINEERING,22.91,0.0,poor
+P069,JD003,Machine Learning Engineer,INFORMATION-TECHNOLOGY,14.61,0.0,poor
+P070,JD003,Machine Learning Engineer,ENGINEERING,23.2,7.69,poor
+P071,JD003,Machine Learning Engineer,CONSULTANT,26.46,0.0,poor
+P072,JD003,Machine Learning Engineer,CONSULTANT,25.74,30.77,partial
+P073,JD003,Machine Learning Engineer,DESIGNER,15.64,0.0,poor
+P074,JD003,Machine Learning Engineer,CONSULTANT,32.81,0.0,poor
+P075,JD003,Machine Learning Engineer,CONSULTANT,19.06,15.38,poor
+P076,JD003,Machine Learning Engineer,CONSULTANT,19.76,7.69,poor
+P077,JD003,Machine Learning Engineer,DESIGNER,7.63,0.0,poor
+P078,JD003,Machine Learning Engineer,DESIGNER,41.79,0.0,partial
+P079,JD003,Machine Learning Engineer,DESIGNER,25.51,0.0,poor
+P080,JD003,Machine Learning Engineer,DESIGNER,25.79,0.0,poor
+P081,JD003,Machine Learning Engineer,FITNESS,18.65,0.0,poor
+P082,JD003,Machine Learning Engineer,ACCOUNTANT,7.98,0.0,poor
+P083,JD003,Machine Learning Engineer,AGRICULTURE,13.85,0.0,poor
+P084,JD003,Machine Learning Engineer,FITNESS,19.51,0.0,poor
+P085,JD003,Machine Learning Engineer,FITNESS,20.98,0.0,poor
+P086,JD003,Machine Learning Engineer,APPAREL,19.19,0.0,poor
+P087,JD003,Machine Learning Engineer,TEACHER,6.86,0.0,poor
+P088,JD003,Machine Learning Engineer,ACCOUNTANT,11.71,0.0,poor
+P089,JD003,Machine Learning Engineer,APPAREL,19.21,0.0,poor
+P090,JD003,Machine Learning Engineer,ACCOUNTANT,15.4,0.0,poor
+P091,JD004,HR Specialist,HR,58.25,0.0,partial
+P092,JD004,HR Specialist,HR,59.27,0.0,partial
+P093,JD004,HR Specialist,HR,62.54,0.0,partial
+P094,JD004,HR Specialist,HR,53.33,0.0,partial
+P095,JD004,HR Specialist,HR,37.5,0.0,poor
+P096,JD004,HR Specialist,HR,51.97,0.0,partial
+P097,JD004,HR Specialist,HR,59.48,0.0,partial
+P098,JD004,HR Specialist,HR,58.71,0.0,partial
+P099,JD004,HR Specialist,HR,50.08,0.0,partial
+P100,JD004,HR Specialist,HR,63.31,0.0,partial
+P101,JD004,HR Specialist,SALES,29.76,0.0,poor
+P102,JD004,HR Specialist,BUSINESS-DEVELOPMENT,16.23,0.0,poor
+P103,JD004,HR Specialist,BUSINESS-DEVELOPMENT,28.66,0.0,poor
+P104,JD004,HR Specialist,SALES,29.31,0.0,poor
+P105,JD004,HR Specialist,SALES,31.86,0.0,poor
+P106,JD004,HR Specialist,SALES,30.97,0.0,poor
+P107,JD004,HR Specialist,PUBLIC-RELATIONS,27.67,0.0,poor
+P108,JD004,HR Specialist,SALES,34.43,0.0,poor
+P109,JD004,HR Specialist,PUBLIC-RELATIONS,37.74,0.0,poor
+P110,JD004,HR Specialist,BUSINESS-DEVELOPMENT,19.02,0.0,poor
+P111,JD004,HR Specialist,ENGINEERING,27.24,0.0,poor
+P112,JD004,HR Specialist,INFORMATION-TECHNOLOGY,23.66,0.0,poor
+P113,JD004,HR Specialist,AVIATION,26.49,0.0,poor
+P114,JD004,HR Specialist,ENGINEERING,14.34,0.0,poor
+P115,JD004,HR Specialist,ADVOCATE,53.21,0.0,partial
+P116,JD004,HR Specialist,ACCOUNTANT,26.85,0.0,poor
+P117,JD004,HR Specialist,DESIGNER,25.79,0.0,poor
+P118,JD004,HR Specialist,HEALTHCARE,33.12,0.0,poor
+P119,JD004,HR Specialist,FITNESS,21.4,0.0,poor
+P120,JD004,HR Specialist,FINANCE,21.85,0.0,poor
+P121,JD005,Marketing Specialist,ARTS,36.51,0.0,poor
+P122,JD005,Marketing Specialist,DIGITAL-MEDIA,18.89,0.0,poor
+P123,JD005,Marketing Specialist,DIGITAL-MEDIA,48.8,0.0,partial
+P124,JD005,Marketing Specialist,DIGITAL-MEDIA,46.03,0.0,partial
+P125,JD005,Marketing Specialist,DIGITAL-MEDIA,53.76,0.0,partial
+P126,JD005,Marketing Specialist,DIGITAL-MEDIA,52.16,0.0,partial
+P127,JD005,Marketing Specialist,DIGITAL-MEDIA,49.87,0.0,partial
+P128,JD005,Marketing Specialist,PUBLIC-RELATIONS,45.18,0.0,partial
+P129,JD005,Marketing Specialist,ARTS,27.16,0.0,poor
+P130,JD005,Marketing Specialist,DIGITAL-MEDIA,50.71,0.0,partial
+P131,JD005,Marketing Specialist,BUSINESS-DEVELOPMENT,42.94,0.0,partial
+P132,JD005,Marketing Specialist,SALES,24.24,0.0,poor
+P133,JD005,Marketing Specialist,SALES,25.83,0.0,poor
+P134,JD005,Marketing Specialist,BUSINESS-DEVELOPMENT,35.86,0.0,poor
+P135,JD005,Marketing Specialist,SALES,19.24,0.0,poor
+P136,JD005,Marketing Specialist,BUSINESS-DEVELOPMENT,39.38,0.0,poor
+P137,JD005,Marketing Specialist,SALES,43.79,0.0,partial
+P138,JD005,Marketing Specialist,BUSINESS-DEVELOPMENT,17.92,0.0,poor
+P139,JD005,Marketing Specialist,SALES,44.65,0.0,partial
+P140,JD005,Marketing Specialist,BUSINESS-DEVELOPMENT,36.97,0.0,poor
+P141,JD005,Marketing Specialist,HEALTHCARE,47.04,0.0,partial
+P142,JD005,Marketing Specialist,CONSULTANT,28.15,0.0,poor
+P143,JD005,Marketing Specialist,CONSULTANT,35.75,0.0,poor
+P144,JD005,Marketing Specialist,BANKING,23.58,0.0,poor
+P145,JD005,Marketing Specialist,ENGINEERING,22.44,0.0,poor
+P146,JD005,Marketing Specialist,FINANCE,36.28,0.0,poor
+P147,JD005,Marketing Specialist,CONSTRUCTION,31.5,0.0,poor
+P148,JD005,Marketing Specialist,BPO,29.0,0.0,poor
+P149,JD005,Marketing Specialist,FINANCE,20.85,0.0,poor
+P150,JD005,Marketing Specialist,CONSULTANT,27.1,0.0,poor
+P151,JD006,Financial Analyst,ACCOUNTANT,48.71,16.67,partial
+P152,JD006,Financial Analyst,BANKING,29.64,0.0,poor
+P153,JD006,Financial Analyst,BANKING,42.26,33.33,partial
+P154,JD006,Financial Analyst,ACCOUNTANT,37.78,16.67,poor
+P155,JD006,Financial Analyst,ACCOUNTANT,34.64,16.67,poor
+P156,JD006,Financial Analyst,BANKING,38.84,16.67,poor
+P157,JD006,Financial Analyst,BANKING,27.6,16.67,poor
+P158,JD006,Financial Analyst,ACCOUNTANT,36.64,0.0,poor
+P159,JD006,Financial Analyst,BANKING,26.93,0.0,poor
+P160,JD006,Financial Analyst,ACCOUNTANT,45.27,0.0,partial
+P161,JD006,Financial Analyst,BUSINESS-DEVELOPMENT,19.83,0.0,poor
+P162,JD006,Financial Analyst,INFORMATION-TECHNOLOGY,20.45,16.67,poor
+P163,JD006,Financial Analyst,CONSULTANT,21.94,16.67,poor
+P164,JD006,Financial Analyst,BUSINESS-DEVELOPMENT,28.95,0.0,poor
+P165,JD006,Financial Analyst,INFORMATION-TECHNOLOGY,16.52,0.0,poor
+P166,JD006,Financial Analyst,CONSULTANT,18.31,16.67,poor
+P167,JD006,Financial Analyst,INFORMATION-TECHNOLOGY,15.09,0.0,poor
+P168,JD006,Financial Analyst,INFORMATION-TECHNOLOGY,14.98,16.67,poor
+P169,JD006,Financial Analyst,BUSINESS-DEVELOPMENT,30.91,0.0,poor
+P170,JD006,Financial Analyst,CONSULTANT,19.58,0.0,poor
+P171,JD006,Financial Analyst,HR,22.14,33.33,partial
+P172,JD006,Financial Analyst,DIGITAL-MEDIA,24.37,16.67,poor
+P173,JD006,Financial Analyst,SALES,16.54,16.67,poor
+P174,JD006,Financial Analyst,AVIATION,13.72,0.0,poor
+P175,JD006,Financial Analyst,SALES,19.68,0.0,poor
+P176,JD006,Financial Analyst,PUBLIC-RELATIONS,12.68,16.67,poor
+P177,JD006,Financial Analyst,CHEF,13.53,16.67,poor
+P178,JD006,Financial Analyst,TEACHER,8.73,0.0,poor
+P179,JD006,Financial Analyst,APPAREL,13.44,16.67,poor
+P180,JD006,Financial Analyst,PUBLIC-RELATIONS,18.36,0.0,poor
