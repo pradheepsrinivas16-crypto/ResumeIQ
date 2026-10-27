@@ -1,9 +1,10 @@
 streamlit
 pandas
 reportlab
+pypdf
+pdfplumber
+python-docx
 torch
 transformers
 sentence-transformers
 scikit-learn
-pdfplumber
-python-docx
