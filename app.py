@@ -556,10 +556,12 @@ if "result" in st.session_state:
 
                     if raw_status in {"demonstrated", "strong", "direct"}:
                         demonstrated.append((skill, evidence))
-                    elif raw_status in {"listed", "listed_only", "listed only"}:
-                        listed.append((skill, evidence))
+                    elif raw_status in {"substitute", "equivalent"}:
+                        supporting.append((skill, evidence))
                     elif raw_status in {"supporting", "supporting_evidence", "supporting evidence", "related"}:
                         supporting.append((skill, evidence))
+                    elif raw_status in {"listed", "listed_only", "listed only"}:
+                        listed.append((skill, evidence))
                     else:
                         missing.append((skill, evidence))
 
@@ -578,6 +580,66 @@ if "result" in st.session_state:
                                         <strong>Status: Demonstrated (1.0x)</strong><br>
                                         Verified in: <strong>{section_text}</strong><br>
                                         Demonstrated project delivery, internships, or professional work.
+                                    </div>
+                                </div>
+                                """,
+                                unsafe_allow_html=True
+                            )
+
+                    if supporting:
+                        st.markdown("#### 🟡 Supporting / Industry Substitute")
+                        for skill, evidence in supporting:
+                            st_name = evidence.get("status", "supporting")
+                            if st_name == "substitute":
+                                sub_name = evidence.get("substitute_tool", "Equivalent tool")
+                                desc = f"Candidate demonstrates <strong>{sub_name}</strong>, a recognized industry equivalent (0.75x credit awarded)."
+                                title_prefix = f"△ {skill} (Sub: {sub_name})"
+                            else:
+                                sections = evidence.get("sections", [])
+                                section_text = ", ".join(str(s).replace("_", " ").title() for s in sections if str(s).strip()) or "Education / Certifications"
+                                desc = f"Verified in: <strong>{section_text}</strong> (0.70x credit awarded)."
+                                title_prefix = f"△ {skill}"
+
+                            render_html(
+                                f"""
+                                <div class="explanation-card" style="margin-bottom:10px; border-left: 3px solid #f59e0b;">
+                                    <div class="explanation-title" style="color:#fbbf24;">{title_prefix}</div>
+                                    <div class="explanation-text">
+                                        <strong>Status: Supporting / Substitute</strong><br>
+                                        {desc}
+                                    </div>
+                                </div>
+                                """,
+                                unsafe_allow_html=True
+                            )
+
+                with evidence_col2:
+                    if listed:
+                        st.markdown("#### 🔵 Listed Only (Partial Credit)")
+                        for skill, evidence in listed:
+                            render_html(
+                                f"""
+                                <div class="explanation-card" style="margin-bottom:10px;">
+                                    <div class="explanation-title">• {skill}</div>
+                                    <div class="explanation-text">
+                                        <strong>Status: Listed Only (0.4x)</strong><br>
+                                        Found only in Skills section without active project sentence context.
+                                    </div>
+                                </div>
+                                """,
+                                unsafe_allow_html=True
+                            )
+
+                    if missing:
+                        st.markdown("#### 🔴 Missing Requirements")
+                        for skill, evidence in missing:
+                            render_html(
+                                f"""
+                                <div class="improvement-card" style="margin-bottom:10px;">
+                                    <div class="improvement-title">! {skill}</div>
+                                    <div class="improvement-text">
+                                        <strong>Status: Missing (0.0x)</strong><br>
+                                        No meaningful evidence detected across resume sections.
                                     </div>
                                 </div>
                                 """,

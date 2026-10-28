@@ -1963,6 +1963,83 @@ def classify_skill_evidence(resume_text, skill):
 
     # Remove duplicates while preserving order
     found_sections = list(dict.fromkeys(found_sections))
+    def classify_skill_evidence(resume_text, skill):
+      sections = extract_resume_sections(resume_text)
+      aliases = SKILL_ALIASES.get(skill, [skill])
+
+    found_sections = []
+
+    for section_name, section_text in sections.items():
+        if section_name in {"contact", "soft_skills"}:
+            continue
+        if not section_text.strip():
+            continue
+
+        normalized_section = normalize_text(section_text)
+        for alias in aliases:
+            alias = normalize_text(alias)
+            pattern = r"(?<!\w)" + re.escape(alias) + r"(?!\w)"
+            if re.search(pattern, normalized_section):
+                found_sections.append(section_name)
+                break
+
+    # If section parsing missed it but substantive text has it, treat as projects
+    if not found_sections:
+        substantive_text = normalize_text(
+            "\n".join(v for k, v in sections.items() if k not in {"contact", "soft_skills"})
+        )
+        for alias in aliases:
+            pattern = r"(?<!\w)" + re.escape(normalize_text(alias)) + r"(?!\w)"
+            if re.search(pattern, substantive_text):
+                found_sections.append("projects")
+                break
+
+    # Remove duplicates while preserving order
+    found_sections = list(dict.fromkeys(found_sections))
+
+    strong_sections = {"projects", "experience", "internship"}
+    strong_found = [s for s in found_sections if s in strong_sections]
+
+    if strong_found:
+        return {
+            "status": "demonstrated",
+            "sections": strong_found,
+            "confidence": 1.0,
+        }
+
+    if "skills" in found_sections:
+        return {
+            "status": "listed",
+            "sections": ["skills"],
+            "confidence": 0.65,
+        }
+
+    supporting_sections = {"certifications", "education"}
+    supporting_found = [s for s in found_sections if s in supporting_sections]
+
+    if supporting_found:
+        return {
+            "status": "supporting",
+            "sections": supporting_found,
+            "confidence": 0.4,
+        }
+
+    # Check for valid industry substitute (e.g., Figma for Adobe XD)
+    candidate_all_skills = extract_skills(resume_text)
+    substitute_tool = find_equivalent_skill(skill, candidate_all_skills)
+    if substitute_tool:
+        return {
+            "status": "substitute",
+            "sections": ["equivalent_tool"],
+            "substitute_tool": substitute_tool,
+            "confidence": 0.75,
+        }
+
+    return {
+        "status": "missing",
+        "sections": [],
+        "confidence": 0.0,
+    }
 
     # --------------------------------------------------------
     # STRONG EVIDENCE
