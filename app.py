@@ -43,38 +43,38 @@ def get_normalized_skill_evidence(skill, evidence_levels, fallback_levels=None):
     norm_skill = raw_str.lower()
 
     if raw_str in levels:
-        return levels[raw_str]
+        return dict(levels[raw_str])
     if fallback and raw_str in fallback:
-        return fallback[raw_str]
+        return dict(fallback[raw_str])
 
     if norm_skill in levels:
-        return levels[norm_skill]
+        return dict(levels[norm_skill])
     if fallback and norm_skill in fallback:
-        return fallback[norm_skill]
+        return dict(fallback[norm_skill])
 
     for k, v in levels.items():
         if str(k).strip().lower() == norm_skill:
-            return v
+            return dict(v)
     if fallback:
         for k, v in fallback.items():
             if str(k).strip().lower() == norm_skill:
-                return v
+                return dict(v)
 
     for canonical, aliases in SKILL_ALIASES.items():
         all_forms = [canonical.strip().lower()] + [a.strip().lower() for a in aliases]
         if norm_skill in all_forms:
             for form in all_forms:
                 if form in levels:
-                    return levels[form]
+                    return dict(levels[form])
                 if fallback and form in fallback:
-                    return fallback[form]
+                    return dict(fallback[form])
             for k, v in levels.items():
                 if str(k).strip().lower() in all_forms:
-                    return v
+                    return dict(v)
             if fallback:
                 for k, v in fallback.items():
                     if str(k).strip().lower() in all_forms:
-                        return v
+                        return dict(v)
 
     return {}
 
@@ -455,8 +455,15 @@ if "result" in st.session_state:
             c_dem, c_list, c_miss = 0, 0, 0
             for sk in required_skills:
                 ev = get_normalized_skill_evidence(sk, skill_evidence_levels, required_skill_evidence_levels)
+                
+                # Check substitute override
+                skill_ev_dict = result.get("skill_evidence", {}).get(sk, {})
+                if skill_ev_dict.get("type") == "substitute":
+                    c_dem += 1
+                    continue
+
                 st_code = str(ev.get("status", "missing")).strip().lower()
-                if st_code in {"demonstrated", "strong", "direct"}:
+                if st_code in {"demonstrated", "strong", "direct", "substitute"}:
                     c_dem += 1
                 elif st_code in {"listed", "listed_only", "listed only", "supporting", "related"}:
                     c_list += 1
@@ -467,7 +474,7 @@ if "result" in st.session_state:
             with m1:
                 render_html(
                     f"""<div class="metric-card" style="border-left: 3px solid #10b981;">
-                        <div class="metric-label">Demonstrated (1.0x)</div>
+                        <div class="metric-label">Demonstrated / Sub (1.0x/0.75x)</div>
                         <div class="metric-value" style="color:#34d399;">{c_dem}</div>
                         <div class="metric-subtitle">Found in projects / work</div>
                     </div>""",
@@ -521,26 +528,28 @@ if "result" in st.session_state:
     with tab_skills:
         skill_col1, skill_col2 = st.columns(2, gap="large")
         with skill_col1:
-            st.markdown("### ✅ Matched Skills")
+            st.markdown("### ✅ Matched Skills & Valid Substitutes")
             if result["matched_skills"]:
-                chips = "".join(f'<span class="chip chip-match">✓ {skill}</span>' for skill in result["matched_skills"])
+                chips = ""
+                for skill in result["matched_skills"]:
+                    skill_ev_dict = result.get("skill_evidence", {}).get(skill, {})
+                    if skill_ev_dict.get("type") == "substitute":
+                        sub_t = skill_ev_dict.get("substitute_tool", "Equivalent tool")
+                        chips += f'<span class="chip chip-match" style="border: 1px dashed #34d399;">✓ {skill} (Sub: {sub_t})</span>'
+                    else:
+                        chips += f'<span class="chip chip-match">✓ {skill}</span>'
                 st.markdown(chips, unsafe_allow_html=True)
             else:
                 st.info("No required skills were matched.")
 
         with skill_col2:
-            st.markdown("### ❌ Missing Skills & Valid Substitutes")
-            if result["missing_skills"]:
-                chips = ""
-                for skill in result["missing_skills"]:
-                    equiv = find_equivalent_skill(skill, result.get("resume_skills", []))
-                    if equiv:
-                        chips += f'<span class="chip chip-neutral" style="border: 1px dashed #f59e0b; color: #fbbf24;">△ {skill} (Sub: {equiv})</span>'
-                    else:
-                        chips += f'<span class="chip chip-missing">! {skill}</span>'
+            st.markdown("### ❌ Unmatched Skill Gaps")
+            real_missing = [s for s in result.get("missing_skills", []) if result.get("skill_evidence", {}).get(s, {}).get("type") != "substitute"]
+            if real_missing:
+                chips = "".join(f'<span class="chip chip-missing">! {skill}</span>' for skill in real_missing)
                 st.markdown(chips, unsafe_allow_html=True)
             else:
-                st.success("No detected skill gaps.")
+                st.success("No unaddressed skill gaps.")
 
         st.write("")
         with st.expander("🔎 Detailed Skill Evidence Drill-Down", expanded=True):
@@ -552,6 +561,13 @@ if "result" in st.session_state:
 
                 for skill in required_skills:
                     evidence = get_normalized_skill_evidence(skill, skill_evidence_levels, required_skill_evidence_levels)
+                    
+                    # Direct substitute bridge from skill_evidence
+                    skill_ev_dict = result.get("skill_evidence", {}).get(skill, {})
+                    if skill_ev_dict.get("type") == "substitute":
+                        evidence["status"] = "substitute"
+                        evidence["substitute_tool"] = skill_ev_dict.get("substitute_tool", "Figma")
+
                     raw_status = str(evidence.get("status", "missing")).strip().lower()
 
                     if raw_status in {"demonstrated", "strong", "direct"}:
@@ -596,13 +612,14 @@ if "result" in st.session_state:
                                 """,
                                 unsafe_allow_html=True
                             )
+
                     if supporting:
                         st.markdown("#### 🟡 Supporting / Industry Substitute")
                         for skill, evidence in supporting:
                             st_name = evidence.get("status", "supporting")
                             if st_name == "substitute":
                                 sub_name = evidence.get("substitute_tool", "Equivalent tool")
-                                desc = f"Candidate demonstrates <strong>{sub_name}</strong>, a recognized industry equivalent (0.75x credit awarded)."
+                                desc = f"Candidate demonstrates <strong>{sub_name}</strong>, an industry-standard equivalent tool (0.75x credit awarded)."
                                 title_prefix = f"△ {skill} (Sub: {sub_name})"
                             else:
                                 sections = evidence.get("sections", [])
@@ -615,7 +632,7 @@ if "result" in st.session_state:
                                 <div class="explanation-card" style="margin-bottom:10px; border-left: 3px solid #f59e0b;">
                                     <div class="explanation-title" style="color:#fbbf24;">{title_prefix}</div>
                                     <div class="explanation-text">
-                                        <strong>Status: Supporting / Substitute</strong><br>
+                                        <strong>Status: Supporting / Substitute (0.75x)</strong><br>
                                         {desc}
                                     </div>
                                 </div>
@@ -659,7 +676,11 @@ if "result" in st.session_state:
                 st.info("No required skill evidence is available.")
 
         # ATS BULLET OPTIMIZER
-        if result.get("missing_skills"):
+        bullet_gap_options = [s for s in result.get("missing_skills", []) if result.get("skill_evidence", {}).get(s, {}).get("type") != "substitute"]
+        if not bullet_gap_options:
+            bullet_gap_options = result.get("missing_skills", [])
+
+        if bullet_gap_options:
             st.write("")
             with st.expander("✨ Resume Bullet-Point Optimizer (ATS Formatted)", expanded=True):
                 st.markdown(
@@ -672,7 +693,7 @@ if "result" in st.session_state:
                 
                 selected_gap = st.selectbox(
                     "Choose a gap to generate bullet points for:",
-                    options=result["missing_skills"],
+                    options=bullet_gap_options,
                     key="bullet_skill_selector"
                 )
                 
@@ -766,7 +787,7 @@ if "result" in st.session_state:
     # TAB 4: CAREER & ROLE FIT
     # --------------------------------------------------------
     with tab_career:
-        # Alternative Career Pathways (With clear explanation to avoid contradiction)
+        # Alternative Career Pathways
         career_recs = get_alternative_pathways(result.get("resume_skills", []))
         if career_recs:
             pathways_html = "".join([
