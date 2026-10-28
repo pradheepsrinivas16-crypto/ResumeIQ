@@ -769,6 +769,7 @@ def find_contextual_skill_evidence(resume_text, skill):
                 break
 
     # Substantive fallback
+    # Substantive fallback (handles punctuation like Git/GitHub, Git:, etc.)
     if not evidence:
         substantive_body = "\n".join(
             v for k, v in sections.items() if k not in {"contact", "soft_skills"}
@@ -776,13 +777,14 @@ def find_contextual_skill_evidence(resume_text, skill):
         substantive_norm = normalize_text(substantive_body)
         for alias in aliases:
             alias_norm = normalize_text(alias)
-            pattern = r"(?<!\w)" + re.escape(alias_norm) + r"(?!\w)"
+            # Match alias bounded by non-alphanumeric characters instead of strict \w
+            pattern = r"(?<![a-zA-Z0-9])" + re.escape(alias_norm) + r"(?![a-zA-Z0-9])"
             if re.search(pattern, substantive_norm):
                 snippet = extract_skill_snippet(substantive_body, aliases)
                 evidence.append({
                     "section": "projects",
                     "evidence": alias,
-                    "snippet": snippet,
+                    "snippet": snippet if snippet else f"Demonstrated {alias} in project experience.",
                     "strength": "strong",
                 })
                 break
