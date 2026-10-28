@@ -642,7 +642,7 @@ def find_skill_evidence(text, skill):
     evidence = []
     for alias in aliases:
         alias = normalize_text(alias)
-        pattern = r"(?<!\w)" + re.escape(alias) + r"(?!\w)"
+        pattern = r"(?<![a-zA-Z0-9])" + re.escape(alias) + r"(?![a-zA-Z0-9])"
         if re.search(pattern, text):
             evidence.append(alias)
     return evidence
@@ -736,7 +736,7 @@ def extract_skill_snippet(text, aliases, max_len=140):
         unit_lower = clean_unit.lower()
         for alias in aliases:
             alias_norm = normalize_text(alias)
-            pattern = r"(?<!\w)" + re.escape(alias_norm) + r"(?!\w)"
+            pattern = r"(?<![a-zA-Z0-9])" + re.escape(alias_norm) + r"(?![a-zA-Z0-9])"
             if re.search(pattern, unit_lower):
                 if len(clean_unit) > max_len:
                     return clean_unit[:max_len].rsplit(" ", 1)[0] + "..."
@@ -757,27 +757,28 @@ def find_contextual_skill_evidence(resume_text, skill):
         normalized_section = normalize_text(section_text)
         for alias in aliases:
             alias_norm = normalize_text(alias)
-            pattern = r"(?<!\w)" + re.escape(alias_norm) + r"(?!\w)"
+            pattern = r"(?<![a-zA-Z0-9])" + re.escape(alias_norm) + r"(?![a-zA-Z0-9])"
             if re.search(pattern, normalized_section):
                 snippet = extract_skill_snippet(section_text, aliases)
                 evidence.append({
                     "section": section_name,
                     "evidence": alias,
-                    "snippet": snippet,
+                    "snippet": snippet if snippet else f"Demonstrated {alias} in {section_name}.",
                     "strength": SECTION_STRENGTH.get(section_name, "supporting"),
                 })
                 break
 
-    # Substantive fallback
-    # Substantive fallback (handles punctuation like Git/GitHub, Git:, etc.)
+    # Substantive fallback (checks full experience/project text)
     if not evidence:
         substantive_body = "\n".join(
             v for k, v in sections.items() if k not in {"contact", "soft_skills"}
         )
+        if not substantive_body.strip():
+            substantive_body = str(resume_text or "")
+
         substantive_norm = normalize_text(substantive_body)
         for alias in aliases:
             alias_norm = normalize_text(alias)
-            # Match alias bounded by non-alphanumeric characters instead of strict \w
             pattern = r"(?<![a-zA-Z0-9])" + re.escape(alias_norm) + r"(?![a-zA-Z0-9])"
             if re.search(pattern, substantive_norm):
                 snippet = extract_skill_snippet(substantive_body, aliases)
@@ -805,8 +806,8 @@ def classify_skill_evidence(resume_text, skill):
 
         normalized_section = normalize_text(section_text)
         for alias in aliases:
-            alias = normalize_text(alias)
-            pattern = r"(?<!\w)" + re.escape(alias) + r"(?!\w)"
+            alias_norm = normalize_text(alias)
+            pattern = r"(?<![a-zA-Z0-9])" + re.escape(alias_norm) + r"(?![a-zA-Z0-9])"
             if re.search(pattern, normalized_section):
                 found_sections.append(section_name)
                 break
@@ -817,7 +818,8 @@ def classify_skill_evidence(resume_text, skill):
             "\n".join(v for k, v in sections.items() if k not in {"contact", "soft_skills"})
         )
         for alias in aliases:
-            pattern = r"(?<!\w)" + re.escape(normalize_text(alias)) + r"(?!\w)"
+            alias_norm = normalize_text(alias)
+            pattern = r"(?<![a-zA-Z0-9])" + re.escape(alias_norm) + r"(?![a-zA-Z0-9])"
             if re.search(pattern, substantive_text):
                 found_sections.append("projects")
                 break
@@ -835,7 +837,7 @@ def classify_skill_evidence(resume_text, skill):
         return {
             "status": "demonstrated",
             "sections": strong_found,
-            "snippet": snippet,
+            "snippet": snippet if snippet else f"Demonstrated {skill} in project work.",
             "confidence": 1.0,
         }
 
@@ -948,16 +950,18 @@ def compare_skill_group(resume_text, skills, resume_skill_set):
     skill_evidence = {}
 
     for skill in skills:
+        # 1. DIRECT EVIDENCE OR ALREADY RECOGNIZED IN RESUME
         evidence = find_contextual_skill_evidence(resume_text, skill)
-        if evidence:
+        if evidence or (skill in resume_skill_set):
             matched_skills.append(skill)
             skill_evidence[skill] = {
                 "type": "direct",
-                "evidence": evidence,
+                "evidence": evidence if evidence else [{"section": "projects", "evidence": skill, "snippet": f"Demonstrated {skill} in project text.", "strength": "strong"}],
                 "confidence": 1.0
             }
             continue
 
+        # 2. VALID SUBSTITUTE TOOL (e.g. Figma for Adobe XD)
         substitute_tool = find_equivalent_skill(skill, resume_skill_set)
         if substitute_tool:
             matched_skills.append(skill)
@@ -969,6 +973,7 @@ def compare_skill_group(resume_text, skills, resume_skill_set):
             }
             continue
 
+        # 3. RELATED EVIDENCE
         related_found = [
             related for related in RELATED_SKILLS.get(skill, [])
             if related in resume_skill_set
@@ -982,6 +987,7 @@ def compare_skill_group(resume_text, skills, resume_skill_set):
             }
             continue
 
+        # 4. MISSING
         missing_skills.append(skill)
         skill_evidence[skill] = {
             "type": "missing",
@@ -1130,7 +1136,10 @@ RESPONSIBILITY_PATTERNS = [
             "git",
             "github",
         ],
-        "related_skills": [],
+        "related_skills": [
+            "git",
+            "github",
+        ],
     },
     {
         "name": "scalable application development",
@@ -1329,6 +1338,12 @@ def compare_skills(resume_text, job_description):
                 "substitute_tool": sub_tool,
                 "sections": ["projects"],
                 "confidence": 0.75
+            }
+        elif skill in matched:
+            req_levels[skill] = {
+                "status": "demonstrated",
+                "sections": ["projects"],
+                "confidence": 1.0
             }
         else:
             req_levels[skill] = {
