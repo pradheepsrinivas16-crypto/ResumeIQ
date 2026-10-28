@@ -50,6 +50,7 @@ def calculate_skill_score(
 
     evidence_weights = {
         "demonstrated": 1.00,
+        "substitute": 0.75,  # Valid industry equivalent tool (e.g. Figma for Adobe XD)
         "supporting": 0.70,
         "listed": 0.40,
         "listed_only": 0.40,

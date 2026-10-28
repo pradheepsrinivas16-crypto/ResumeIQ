@@ -275,17 +275,16 @@ SKILL_ALIASES = {
 
 
     "responsive web design": [
-
         "responsive web design",
-
         "responsive web development",
-
         "responsive websites",
-
-        "responsive web applications"
-
+        "responsive web applications",
+        "responsive web",
+        "responsive design",
+        "responsive e-commerce",
+        "responsive ecommerce",
+        "responsive"
     ],
-
 
     # --------------------------------------------------------
 
@@ -918,14 +917,13 @@ SKILL_ALIASES = {
 
 
     "git": [
-
-
         "git",
-
-
-        "git version control"
-
-
+        "git version control",
+        "version control",
+        "git workflows",
+        "git workflow",
+        "github workflows",
+        "collaborative development"
     ],
 
 
@@ -2020,6 +2018,19 @@ def classify_skill_evidence(resume_text, skill):
             "status": "supporting",
             "sections": supporting_found,
             "confidence": 0.4,
+        }
+
+    # --------------------------------------------------------
+    # SUBSTITUTE / EQUIVALENT SKILL CHECK
+    # --------------------------------------------------------
+    candidate_all_skills = extract_skills(resume_text)
+    substitute_tool = find_equivalent_skill(skill, candidate_all_skills)
+    if substitute_tool:
+        return {
+            "status": "substitute",
+            "sections": ["equivalent_tool"],
+            "substitute_tool": substitute_tool,
+            "confidence": 0.75,
         }
 
     # --------------------------------------------------------
