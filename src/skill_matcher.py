@@ -770,13 +770,14 @@ def find_contextual_skill_evidence(resume_text, skill):
 
     # Substantive fallback (checks full experience/project text)
     if not evidence:
-        substantive_body = "\n".join(
-            v for k, v in sections.items() if k not in {"contact", "soft_skills"}
-        )
-        if not substantive_body.strip():
-            substantive_body = str(resume_text or "")
-
+        raw_lines = str(resume_text or "").replace("\r", "\n").splitlines()
+        clean_lines = [
+            line for line in raw_lines 
+            if not re.search(r"https?://|www\.|@", line, flags=re.I)
+        ]
+        substantive_body = "\n".join(clean_lines)
         substantive_norm = normalize_text(substantive_body)
+
         for alias in aliases:
             alias_norm = normalize_text(alias)
             pattern = r"(?<![a-zA-Z0-9])" + re.escape(alias_norm) + r"(?![a-zA-Z0-9])"
@@ -785,7 +786,7 @@ def find_contextual_skill_evidence(resume_text, skill):
                 evidence.append({
                     "section": "projects",
                     "evidence": alias,
-                    "snippet": snippet if snippet else f"Demonstrated {alias} in project experience.",
+                    "snippet": snippet if snippet else f"Demonstrated {alias} in projects / experience.",
                     "strength": "strong",
                 })
                 break
@@ -814,9 +815,13 @@ def classify_skill_evidence(resume_text, skill):
 
     # Substantive fallback
     if not found_sections:
-        substantive_text = normalize_text(
-            "\n".join(v for k, v in sections.items() if k not in {"contact", "soft_skills"})
-        )
+        raw_lines = str(resume_text or "").replace("\r", "\n").splitlines()
+        clean_lines = [
+            line for line in raw_lines 
+            if not re.search(r"https?://|www\.|@", line, flags=re.I)
+        ]
+        substantive_text = normalize_text("\n".join(clean_lines))
+
         for alias in aliases:
             alias_norm = normalize_text(alias)
             pattern = r"(?<![a-zA-Z0-9])" + re.escape(alias_norm) + r"(?![a-zA-Z0-9])"
@@ -833,6 +838,8 @@ def classify_skill_evidence(resume_text, skill):
         substantive_body = "\n".join(
             v for k, v in sections.items() if k in strong_sections
         )
+        if not substantive_body.strip():
+            substantive_body = str(resume_text or "")
         snippet = extract_skill_snippet(substantive_body, aliases)
         return {
             "status": "demonstrated",
@@ -956,7 +963,12 @@ def compare_skill_group(resume_text, skills, resume_skill_set):
             matched_skills.append(skill)
             skill_evidence[skill] = {
                 "type": "direct",
-                "evidence": evidence if evidence else [{"section": "projects", "evidence": skill, "snippet": f"Demonstrated {skill} in project text.", "strength": "strong"}],
+                "evidence": evidence if evidence else [{
+                    "section": "projects", 
+                    "evidence": skill, 
+                    "snippet": f"Demonstrated {skill} in project or experience workflows.", 
+                    "strength": "strong"
+                }],
                 "confidence": 1.0
             }
             continue
@@ -1329,22 +1341,30 @@ def compare_skills(resume_text, job_description):
     # Build required_skill_evidence_levels cleanly
     req_levels = {}
     for skill in required_skills:
-        if skill in skill_evidence_levels:
+        # Check direct matched skills first
+        if skill in matched:
+            if skill in evidence and evidence[skill].get("type") == "substitute":
+                sub_tool = evidence[skill].get("substitute_tool", "Equivalent tool")
+                req_levels[skill] = {
+                    "status": "substitute",
+                    "substitute_tool": sub_tool,
+                    "sections": ["projects"],
+                    "confidence": 0.75
+                }
+            elif skill in skill_evidence_levels and skill_evidence_levels[skill].get("status") in {"demonstrated", "listed", "supporting"}:
+                req_levels[skill] = skill_evidence_levels[skill]
+            else:
+                snippet_text = ""
+                if skill in evidence and evidence[skill].get("evidence"):
+                    snippet_text = evidence[skill]["evidence"][0].get("snippet", "")
+                req_levels[skill] = {
+                    "status": "demonstrated",
+                    "sections": ["projects"],
+                    "snippet": snippet_text if snippet_text else f"Demonstrated {skill} in project workflows.",
+                    "confidence": 1.0
+                }
+        elif skill in skill_evidence_levels and skill_evidence_levels[skill].get("status") != "missing":
             req_levels[skill] = skill_evidence_levels[skill]
-        elif skill in evidence and evidence[skill].get("type") == "substitute":
-            sub_tool = evidence[skill].get("substitute_tool", "Equivalent tool")
-            req_levels[skill] = {
-                "status": "substitute",
-                "substitute_tool": sub_tool,
-                "sections": ["projects"],
-                "confidence": 0.75
-            }
-        elif skill in matched:
-            req_levels[skill] = {
-                "status": "demonstrated",
-                "sections": ["projects"],
-                "confidence": 1.0
-            }
         else:
             req_levels[skill] = {
                 "status": "missing",
