@@ -1869,6 +1869,31 @@ def extract_resume_sections(text):
     }
 
 
+def extract_skill_snippet(text, aliases, max_len=140):
+    """
+    Extracts the clean, authentic sentence or bullet point from the resume 
+    that directly demonstrates the skill.
+    """
+    if not text:
+        return ""
+    
+    # Split by common resume bullet or sentence delimiters
+    raw_units = re.split(r"(?<=[.!?\n])\s+|[\u2022\u25E6\u2023\u25B8\u2013-]\s+", text)
+    
+    for unit in raw_units:
+        clean_unit = re.sub(r"\s+", " ", unit).strip()
+        if len(clean_unit) < 15:
+            continue
+        unit_lower = clean_unit.lower()
+        for alias in aliases:
+            alias_norm = normalize_text(alias)
+            pattern = r"(?<!\w)" + re.escape(alias_norm) + r"(?!\w)"
+            if re.search(pattern, unit_lower):
+                # Trim to clean readable length if extra long
+                if len(clean_unit) > max_len:
+                    return clean_unit[:max_len].rsplit(" ", 1)[0] + "..."
+                return clean_unit
+    return ""
 def find_contextual_skill_evidence(resume_text, skill):
     """
     Find skill evidence inside actual resume-content sections.
@@ -1889,25 +1914,30 @@ def find_contextual_skill_evidence(resume_text, skill):
             alias_norm = normalize_text(alias)
             pattern = r"(?<!\w)" + re.escape(alias_norm) + r"(?!\w)"
             if re.search(pattern, normalized_section):
+                snippet = extract_skill_snippet(section_text, aliases)
                 evidence.append({
                     "section": section_name,
                     "evidence": alias,
+                    "snippet": snippet,
                     "strength": SECTION_STRENGTH.get(section_name, "supporting"),
                 })
                 break
 
-    # Substantive fallback: if section header was ambiguous but term is in project/experience body
+    # Substantive fallback
     if not evidence:
-        substantive_body = normalize_text(
-            "\n".join(v for k, v in sections.items() if k not in {"contact", "soft_skills"})
+        substantive_body = "\n".join(
+            v for k, v in sections.items() if k not in {"contact", "soft_skills"}
         )
+        substantive_norm = normalize_text(substantive_body)
         for alias in aliases:
             alias_norm = normalize_text(alias)
             pattern = r"(?<!\w)" + re.escape(alias_norm) + r"(?!\w)"
-            if re.search(pattern, substantive_body):
+            if re.search(pattern, substantive_norm):
+                snippet = extract_skill_snippet(substantive_body, aliases)
                 evidence.append({
                     "section": "projects",
                     "evidence": alias,
+                    "snippet": snippet,
                     "strength": "strong",
                 })
                 break
@@ -2004,12 +2034,16 @@ def classify_skill_evidence(resume_text, skill):
     strong_found = [s for s in found_sections if s in strong_sections]
 
     if strong_found:
+        substantive_body = "\n".join(
+            v for k, v in sections.items() if k in strong_sections
+        )
+        snippet = extract_skill_snippet(substantive_body, aliases)
         return {
             "status": "demonstrated",
             "sections": strong_found,
+            "snippet": snippet,
             "confidence": 1.0,
         }
-
     if "skills" in found_sections:
         return {
             "status": "listed",

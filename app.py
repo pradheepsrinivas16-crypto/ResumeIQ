@@ -572,20 +572,30 @@ if "result" in st.session_state:
                         for skill, evidence in demonstrated:
                             sections = evidence.get("sections", [])
                             section_text = ", ".join(str(s).replace("_", " ").title() for s in sections if str(s).strip()) or "Projects / Experience"
+                            snippet = evidence.get("snippet", "").strip()
+                            
+                            snippet_html = ""
+                            if snippet:
+                                snippet_html = f"""
+                                <div style="margin-top:8px; padding:8px 12px; background:rgba(56, 189, 248, 0.08); border-left:3px solid #38bdf8; border-radius:4px; font-style:italic; font-size:12.5px; color:#cbd5e1;">
+                                    "{snippet}"
+                                </div>
+                                """
+                            else:
+                                snippet_html = "<div style='font-size:12px; color:#94a3b8; margin-top:4px;'>Direct project or work experience delivery confirmed.</div>"
+
                             render_html(
                                 f"""
                                 <div class="explanation-card" style="margin-bottom:10px;">
                                     <div class="explanation-title">✓ {skill}</div>
                                     <div class="explanation-text">
-                                        <strong>Status: Demonstrated (1.0x)</strong><br>
-                                        Verified in: <strong>{section_text}</strong><br>
-                                        Demonstrated project delivery, internships, or professional work.
+                                        <strong>Status: Demonstrated (1.0x)</strong> • Verified in: <strong>{section_text}</strong>
+                                        {snippet_html}
                                     </div>
                                 </div>
                                 """,
                                 unsafe_allow_html=True
                             )
-
                     if supporting:
                         st.markdown("#### 🟡 Supporting / Industry Substitute")
                         for skill, evidence in supporting:
