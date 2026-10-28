@@ -348,6 +348,39 @@ def apply_custom_css():
             padding-top: 22px;
             border-top: 1px solid #1e293b;
         }
+        /* Ensure Target Job text area has dark background and crisp white readable text */
+.stTextArea textarea {
+    background-color: #1c2541 !important;
+    color: #ffffff !important;
+    border: 1px solid #3a506b !important;
+    border-radius: 8px !important;
+}
+
+/* Ensure radio button labels are bright and readable */
+div[data-testid="stRadio"] label p {
+    color: #ffffff !important;
+    font-size: 14px !important;
+}
+
+/* Fix expanders so summary and contents render properly with high contrast */
+div[data-testid="stExpander"] {
+    background-color: #1c2541 !important;
+    border: 1px solid #3a506b !important;
+    border-radius: 8px !important;
+    margin-bottom: 12px !important;
+}
+
+div[data-testid="stExpander"] details summary {
+    color: #ffffff !important;
+    cursor: pointer !important;
+}
+
+div[data-testid="stExpander"] div[data-testid="stExpanderDetails"] {
+    background-color: #0b132b !important;
+    color: #e2e8f0 !important;
+    padding: 16px !important;
+    border-top: 1px solid #3a506b !important;
+}
         </style>
         """,
         unsafe_allow_html=True

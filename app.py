@@ -605,234 +605,188 @@ if "result" in st.session_state:
             else:
                 st.info("Skill gap analysis is not available because no recognized job skills were detected.")
 
-    # Required Skill Evidence (Collapsible)
-    render_html(
-        """
-        <details style="margin-top:28px; margin-bottom:12px;">
-        <summary style="
-            cursor:pointer;
-            font-size:18px;
-            font-weight:700;
-            color:#f8fafc;
-            padding:14px 18px;
-            background:rgba(15,23,42,0.85);
-            border:1px solid #1e293b;
-            border-radius:12px;
-            list-style:none;
-            display:flex;
-            align-items:center;
-            gap:8px;
-        ">
-            🔎 Required Skill Evidence
-            <span style="font-size:12px;color:#64748b;margin-left:8px;">(click to expand)</span>
-        </summary>
-        """,
-        unsafe_allow_html=True
-    )
+    # ========================================================
+    # REQUIRED SKILL EVIDENCE (NATIVE EXPANDER)
+    # ========================================================
+    with st.expander("🔎 Required Skill Evidence", expanded=True):
+        skill_evidence_levels = result.get("skill_evidence_levels", result.get("required_skill_evidence_levels", {}))
+        required_skill_evidence_levels = result.get("required_skill_evidence_levels", {})
+        required_skills = result.get("required_skills", [])
 
-    skill_evidence_levels = result.get("skill_evidence_levels", result.get("required_skill_evidence_levels", {}))
-    required_skill_evidence_levels = result.get("required_skill_evidence_levels", {})
-    required_skills = result.get("required_skills", [])
+        if required_skills:
+            demonstrated = []
+            listed = []
+            supporting = []
+            missing = []
 
-    if required_skills:
-        demonstrated = []
-        listed = []
-        supporting = []
-        missing = []
+            for skill in required_skills:
+                evidence = get_normalized_skill_evidence(skill, skill_evidence_levels, required_skill_evidence_levels)
+                raw_status = str(evidence.get("status", "missing")).strip().lower()
 
-        for skill in required_skills:
-            evidence = get_normalized_skill_evidence(skill, skill_evidence_levels, required_skill_evidence_levels)
-            raw_status = str(evidence.get("status", "missing")).strip().lower()
+                if raw_status in {"demonstrated", "strong", "direct"}:
+                    demonstrated.append((skill, evidence))
+                elif raw_status in {"listed", "listed_only", "listed only"}:
+                    listed.append((skill, evidence))
+                elif raw_status in {"supporting", "supporting_evidence", "supporting evidence", "related"}:
+                    supporting.append((skill, evidence))
+                else:
+                    missing.append((skill, evidence))
 
-            if raw_status in {"demonstrated", "strong", "direct"}:
-                demonstrated.append((skill, evidence))
-            elif raw_status in {"listed", "listed_only", "listed only"}:
-                listed.append((skill, evidence))
-            elif raw_status in {"supporting", "supporting_evidence", "supporting evidence", "related"}:
-                supporting.append((skill, evidence))
-            else:
-                missing.append((skill, evidence))
+            evidence_col1, evidence_col2 = st.columns(2, gap="large")
+            with evidence_col1:
+                if demonstrated:
+                    st.markdown("### 🟢 Demonstrated")
+                    for skill, evidence in demonstrated:
+                        sections = evidence.get("sections", [])
+                        section_text = ", ".join(str(s).replace("_", " ").title() for s in sections if str(s).strip()) or "Projects / Experience"
+                        render_html(
+                            f"""
+                            <div class="explanation-card" style="margin-bottom:10px;">
+                                <div class="explanation-title">✓ {skill}</div>
+                                <div class="explanation-text">
+                                    <strong>Status: Demonstrated</strong> • Direct evidence detected.<br><br>
+                                    Evidence source: {section_text}<br><br>
+                                    Direct evidence found in projects, internships, or work experience.
+                                </div>
+                            </div>
+                            """,
+                            unsafe_allow_html=True
+                        )
 
-        evidence_col1, evidence_col2 = st.columns(2, gap="large")
-        with evidence_col1:
-            if demonstrated:
-                st.markdown("### 🟢 Demonstrated")
-                for skill, evidence in demonstrated:
-                    sections = evidence.get("sections", [])
-                    section_text = ", ".join(str(s).replace("_", " ").title() for s in sections if str(s).strip()) or "Projects / Experience"
+                if supporting:
+                    st.markdown("### 🟡 Supporting Evidence")
+                    for skill, evidence in supporting:
+                        sections = evidence.get("sections", [])
+                        section_text = ", ".join(str(s).replace("_", " ").title() for s in sections if str(s).strip()) or "Education / Certifications"
+                        render_html(
+                            f"""
+                            <div class="explanation-card" style="margin-bottom:10px;">
+                                <div class="explanation-title">△ {skill}</div>
+                                <div class="explanation-text">
+                                    <strong>Status: Supporting Evidence</strong> • Supported by background qualifications.<br><br>
+                                    Evidence source: {section_text}<br><br>
+                                    Supported by relevant education or certifications without direct project experience.
+                                </div>
+                            </div>
+                            """,
+                            unsafe_allow_html=True
+                        )
+
+            with evidence_col2:
+                if listed:
+                    st.markdown("### 🔵 Listed Only")
+                    for skill, evidence in listed:
+                        sections = evidence.get("sections", ["skills"])
+                        section_text = ", ".join(str(s).replace("_", " ").title() for s in sections if str(s).strip()) or "Skills"
+                        render_html(
+                            f"""
+                            <div class="explanation-card" style="margin-bottom:10px;">
+                                <div class="explanation-title">• {skill}</div>
+                                <div class="explanation-text">
+                                    <strong>Status: Listed Only</strong> • Mentioned in skills section.<br><br>
+                                    Evidence source: {section_text}<br><br>
+                                    Mentioned in the skills section without direct project or experience evidence.
+                                </div>
+                            </div>
+                            """,
+                            unsafe_allow_html=True
+                        )
+
+                if missing:
+                    st.markdown("### 🔴 Missing")
+                    for skill, evidence in missing:
+                        render_html(
+                            f"""
+                            <div class="improvement-card" style="margin-bottom:10px;">
+                                <div class="improvement-title">! {skill}</div>
+                                <div class="improvement-text">
+                                    <strong>Status: Missing</strong> • No meaningful evidence detected.<br><br>
+                                    Evidence source: None detected<br><br>
+                                    No meaningful evidence for this required skill was detected in the resume.
+                                </div>
+                            </div>
+                            """,
+                            unsafe_allow_html=True
+                        )
+        else:
+            st.info("No required skill evidence is available.")
+
+    # ========================================================
+    # JOB RESPONSIBILITY ANALYSIS (NATIVE EXPANDER)
+    # ========================================================
+    with st.expander("🎯 Job Responsibility Analysis", expanded=True):
+        responsibility_analysis = result.get("responsibility_analysis", {})
+        responsibility_items = responsibility_analysis.get("responsibilities", [])
+
+        if responsibility_items:
+            strong_items = [i for i in responsibility_items if i.get("status") == "strong"]
+            related_items = [i for i in responsibility_items if i.get("status") == "related"]
+            missing_items = [i for i in responsibility_items if i.get("status") == "missing"]
+
+            if strong_items:
+                st.markdown("### 🟢 Strong Evidence")
+                for item in strong_items:
+                    evidence = item.get("evidence", [])
+                    evidence_text = ", ".join(str(e.get("evidence", "")) for e in evidence if e.get("evidence")) or "Explicitly supported by resume content."
                     render_html(
                         f"""
                         <div class="explanation-card" style="margin-bottom:10px;">
-                            <div class="explanation-title">✓ {skill}</div>
-                            <div class="explanation-text">
-                                <strong>Status: Demonstrated</strong> • Direct evidence detected.<br><br>
-                                Evidence source: {section_text}<br><br>
-                                Direct evidence found in projects, internships, or work experience.
-                            </div>
+                            <div class="explanation-title">✓ {item.get('responsibility', 'Responsibility')}</div>
+                            <div class="explanation-text"><strong>Resume evidence:</strong> {evidence_text}</div>
                         </div>
                         """,
                         unsafe_allow_html=True
                     )
 
-            if supporting:
-                st.markdown("### 🟡 Supporting Evidence")
-                for skill, evidence in supporting:
-                    sections = evidence.get("sections", [])
-                    section_text = ", ".join(str(s).replace("_", " ").title() for s in sections if str(s).strip()) or "Education / Certifications"
+            if related_items:
+                st.markdown("### 🟡 Related Evidence")
+                for item in related_items:
+                    related_names = [ev.get("skill", "") for ev in item.get("related_evidence", []) if ev.get("skill")]
+                    related_text = ", ".join(related_names) or "Related resume evidence detected."
                     render_html(
                         f"""
                         <div class="explanation-card" style="margin-bottom:10px;">
-                            <div class="explanation-title">△ {skill}</div>
+                            <div class="explanation-title">△ {item.get('responsibility', 'Responsibility')}</div>
                             <div class="explanation-text">
-                                <strong>Status: Supporting Evidence</strong> • Supported by background qualifications.<br><br>
-                                Evidence source: {section_text}<br><br>
-                                Supported by relevant education or certifications without direct project experience.
+                                <strong>Related evidence:</strong> {related_text}<br><br>
+                                Related evidence supports the responsibility but does not prove direct performance.
                             </div>
                         </div>
                         """,
                         unsafe_allow_html=True
                     )
 
-        with evidence_col2:
-            if listed:
-                st.markdown("### 🔵 Listed Only")
-                for skill, evidence in listed:
-                    sections = evidence.get("sections", ["skills"])
-                    section_text = ", ".join(str(s).replace("_", " ").title() for s in sections if str(s).strip()) or "Skills"
+            if missing_items:
+                st.markdown("### 🔴 Not Demonstrated")
+                for item in missing_items:
                     render_html(
                         f"""
-                        <div class="explanation-card" style="margin-bottom:10px;">
-                            <div class="explanation-title">• {skill}</div>
-                            <div class="explanation-text">
-                                <strong>Status: Listed Only</strong> • Mentioned in skills section.<br><br>
-                                Evidence source: {section_text}<br><br>
-                                Mentioned in the skills section without direct project or experience evidence.
-                            </div>
+                        <div class="improvement-card">
+                            <div class="improvement-title">! {item.get('responsibility', 'Responsibility')}</div>
+                            <div class="improvement-text">{item.get('reason', 'No meaningful evidence was detected.')}</div>
                         </div>
                         """,
                         unsafe_allow_html=True
                     )
 
-            if missing:
-                st.markdown("### 🔴 Missing")
-                for skill, evidence in missing:
-                    render_html(
-                        f"""
-                        <div class="improvement-card" style="margin-bottom:10px;">
-                            <div class="improvement-title">! {skill}</div>
-                            <div class="improvement-text">
-                                <strong>Status: Missing</strong> • No meaningful evidence detected.<br><br>
-                                Evidence source: None detected<br><br>
-                                No meaningful evidence for this required skill was detected in the resume.
-                            </div>
-                        </div>
-                        """,
-                        unsafe_allow_html=True
-                    )
-    else:
-        st.info("No required skill evidence is available.")
-
-    render_html("<p></details>", unsafe_allow_html=True)
-
-    # Job Responsibility Analysis (Collapsible)
-    render_html(
-        """
-        <details style="margin-top:28px; margin-bottom:12px;">
-        <summary style="
-            cursor:pointer;
-            font-size:18px;
-            font-weight:700;
-            color:#f8fafc;
-            padding:14px 18px;
-            background:rgba(15,23,42,0.85);
-            border:1px solid #1e293b;
-            border-radius:12px;
-            list-style:none;
-            display:flex;
-            align-items:center;
-            gap:8px;
-        ">
-            🎯 Job Responsibility Analysis
-            <span style="font-size:12px;color:#64748b;margin-left:8px;">(click to expand)</span>
-        </summary>
-        """,
-        unsafe_allow_html=True
-    )
-
-    responsibility_analysis = result.get("responsibility_analysis", {})
-    responsibility_items = responsibility_analysis.get("responsibilities", [])
-
-    if responsibility_items:
-        strong_items = [i for i in responsibility_items if i.get("status") == "strong"]
-        related_items = [i for i in responsibility_items if i.get("status") == "related"]
-        missing_items = [i for i in responsibility_items if i.get("status") == "missing"]
-
-        if strong_items:
-            st.markdown("### 🟢 Strong Evidence")
-            for item in strong_items:
-                evidence = item.get("evidence", [])
-                evidence_text = ", ".join(str(e.get("evidence", "")) for e in evidence if e.get("evidence")) or "Explicitly supported by resume content."
-                render_html(
-                    f"""
-                    <div class="explanation-card" style="margin-bottom:10px;">
-                        <div class="explanation-title">✓ {item.get('responsibility', 'Responsibility')}</div>
-                        <div class="explanation-text"><strong>Resume evidence:</strong> {evidence_text}</div>
+            summary = responsibility_analysis.get("summary", {})
+            st.caption(
+                f"Responsibility evidence: {summary.get('strong', len(strong_items))} strong • "
+                f"{summary.get('related', len(related_items))} related • "
+                f"{summary.get('missing', len(missing_items))} not demonstrated"
+            )
+        else:
+            render_html(
+                """
+                <div class="explanation-card" style="border-left:3px solid #f59e0b;">
+                    <div class="explanation-title" style="color:#f59e0b;">📋 No Responsibilities Detected</div>
+                    <div class="explanation-text">
+                        Add responsibilities to the JD for deeper analysis.
                     </div>
-                    """,
-                    unsafe_allow_html=True
-                )
-
-        if related_items:
-            st.markdown("### 🟡 Related Evidence")
-            for item in related_items:
-                related_names = [ev.get("skill", "") for ev in item.get("related_evidence", []) if ev.get("skill")]
-                related_text = ", ".join(related_names) or "Related resume evidence detected."
-                render_html(
-                    f"""
-                    <div class="explanation-card" style="margin-bottom:10px;">
-                        <div class="explanation-title">△ {item.get('responsibility', 'Responsibility')}</div>
-                        <div class="explanation-text">
-                            <strong>Related evidence:</strong> {related_text}<br><br>
-                            Related evidence supports the responsibility but does not prove direct performance.
-                        </div>
-                    </div>
-                    """,
-                    unsafe_allow_html=True
-                )
-
-        if missing_items:
-            st.markdown("### 🔴 Not Demonstrated")
-            for item in missing_items:
-                render_html(
-                    f"""
-                    <div class="improvement-card">
-                        <div class="improvement-title">! {item.get('responsibility', 'Responsibility')}</div>
-                        <div class="improvement-text">{item.get('reason', 'No meaningful evidence was detected.')}</div>
-                    </div>
-                    """,
-                    unsafe_allow_html=True
-                )
-
-        summary = responsibility_analysis.get("summary", {})
-        st.caption(
-            f"Responsibility evidence: {summary.get('strong', len(strong_items))} strong • "
-            f"{summary.get('related', len(related_items))} related • "
-            f"{summary.get('missing', len(missing_items))} not demonstrated"
-        )
-    else:
-        render_html(
-            """
-            <div class="explanation-card" style="border-left:3px solid #f59e0b;">
-                <div class="explanation-title" style="color:#f59e0b;">📋 No Responsibilities Detected</div>
-                <div class="explanation-text">
-                    Add responsibilities to the JD for deeper analysis.
                 </div>
-            </div>
-            """,
-            unsafe_allow_html=True
-        )
-
-    render_html("<p></details>", unsafe_allow_html=True)
+                """,
+                unsafe_allow_html=True
+            )
 
     # Improvement Plan
     render_html(
@@ -875,11 +829,12 @@ if "result" in st.session_state:
                 )
         else:
             st.info("No recognized job skills were detected, so skill-specific improvement recommendations cannot be generated.")
-        # ========================================================
-    # RESUME BULLET-POINT OPTIMIZER
+
+    # ========================================================
+    # RESUME BULLET-POINT OPTIMIZER (NATIVE EXPANDER)
     # ========================================================
     if result.get("missing_skills"):
-        with st.expander("✨ Resume Bullet-Point Optimizer (ATS Formatted)"):
+        with st.expander("✨ Resume Bullet-Point Optimizer (ATS Formatted)", expanded=True):
             st.markdown(
                 "<div style='font-size:13px; color:#94a3b8; margin-bottom:12px;'>"
                 "Select any identified skill gap to generate high-impact, action-driven bullet points "
@@ -920,52 +875,29 @@ if "result" in st.session_state:
         else:
             st.info("Skill-based strengths could not be compared because no recognized job skills were detected.")
 
-    # BERT Resume Classification (Collapsible)
-    render_html(
-        """
-        <details style="margin-top:28px; margin-bottom:12px;">
-        <summary style="
-            cursor:pointer;
-            font-size:18px;
-            font-weight:700;
-            color:#f8fafc;
-            padding:14px 18px;
-            background:rgba(15,23,42,0.85);
-            border:1px solid #1e293b;
-            border-radius:12px;
-            list-style:none;
-            display:flex;
-            align-items:center;
-            gap:8px;
-        ">
-            🧠 BERT Resume Classification
-            <span style="font-size:12px;color:#64748b;margin-left:8px;">(click to expand)</span>
-        </summary>
-        """,
-        unsafe_allow_html=True
-    )
-
-    bert_categories = result.get("bert_categories", [])
-    if bert_categories:
-        bert_cols = st.columns(len(bert_categories))
-        for index, prediction in enumerate(bert_categories):
-            with bert_cols[index]:
-                render_html(
-                    f"""
-                    <div class="bert-card">
-                        <div class="bert-rank">RANK {index + 1}</div>
-                        <div class="bert-category">{prediction["category"].title()}</div>
-                        <div class="bert-confidence">{prediction["confidence"]:.2f}%</div>
-                    </div>
-                    """,
-                    unsafe_allow_html=True
-                )
-        st.caption(
-            "BERT confidence represents classification probability across resume categories. "
-            "⚠️ Low confidence (< 50%) indicates ambiguous resume text; it does not degrade overall compatibility score."
-        )
-
-    render_html("<p></details>", unsafe_allow_html=True)
+    # ========================================================
+    # BERT RESUME CLASSIFICATION (NATIVE EXPANDER)
+    # ========================================================
+    with st.expander("🧠 BERT Resume Classification", expanded=True):
+        bert_categories = result.get("bert_categories", [])
+        if bert_categories:
+            bert_cols = st.columns(len(bert_categories))
+            for index, prediction in enumerate(bert_categories):
+                with bert_cols[index]:
+                    render_html(
+                        f"""
+                        <div class="bert-card">
+                            <div class="bert-rank">RANK {index + 1}</div>
+                            <div class="bert-category">{prediction["category"].title()}</div>
+                            <div class="bert-confidence">{prediction["confidence"]:.2f}%</div>
+                        </div>
+                        """,
+                        unsafe_allow_html=True
+                    )
+            st.caption(
+                "BERT confidence represents classification probability across resume categories. "
+                "⚠️ Low confidence (< 50%) indicates ambiguous resume text; it does not degrade overall compatibility score."
+            )
 
     # Job-Relevant Capabilities
     render_html(
