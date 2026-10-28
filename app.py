@@ -86,19 +86,16 @@ with st.sidebar:
     st.markdown('<div class="sidebar-subtitle">Resume Intelligence Platform</div>', unsafe_allow_html=True)
     st.divider()
     st.markdown('<div class="sidebar-section">AI Models</div>', unsafe_allow_html=True)
-    st.write("🧠 BERT")
-    st.write("🔎 Sentence Transformer")
-    st.write("🛠️ Skill Intelligence")
-    st.write("💡 Capability Engine")
-    st.markdown('<div class="sidebar-section">Analysis</div>', unsafe_allow_html=True)
-    st.write("✓ Semantic compatibility")
-    st.write("✓ Skill coverage")
-    st.write("✓ Missing-skill detection")
-    st.write("✓ Role classification")
-    st.write("✓ Capability analysis")
-    st.write("✓ Improvement recommendations")
+    st.write("🧠 BERT Classifier (Supporting)")
+    st.write("🔎 Sentence-Transformers (MiniLM)")
+    st.write("🛠️ Evidence-Weighted Skill Engine")
+    st.write("💡 Semantic Capability Engine")
+    st.markdown('<div class="sidebar-section">Analysis Suite</div>', unsafe_allow_html=True)
+    st.write("✓ Calibrated semantic matching")
+    st.write("✓ 3-tier evidence verification")
+    st.write("✓ Substitute skill crediting")
+    st.write("✓ Cross-functional pathways")
     st.write("✓ Batch candidate ranking")
-    st.write("✓ Alternative career pathways")
     st.divider()
     st.caption("Deep Learning • NLP • Explainable Screening")
 
@@ -108,11 +105,11 @@ with st.sidebar:
 render_html(
     """
     <div class="hero">
-        <div class="hero-badge">DEEP LEARNING RESUME INTELLIGENCE</div>
+        <div class="hero-badge">EXPLAINABLE RESUME INTELLIGENCE</div>
         <div class="hero-title">Resume<span>IQ</span></div>
         <div class="hero-description">
-            Analyze candidate compatibility against job requirements, uncover skill gaps, 
-            explore cross-functional career paths, and rank multiple applicants in batch.
+            Dual-engine ATS: Dense semantic similarity combined with evidence-weighted skill verification, 
+            gap remediation, and batch leaderboard ranking.
         </div>
     </div>
     """,
@@ -320,9 +317,11 @@ if screening_mode == "Multi-Resume Batch Leaderboard" and "batch_results" in st.
             use_container_width=True
         )
 
+    # Clean display with index hidden
     st.dataframe(
         filtered_df.drop(columns=["Detailed Result"]),
         use_container_width=True,
+        hide_index=True,
         column_config={
             "Overall Score (%)": st.column_config.ProgressColumn(
                 "Overall Fit", format="%.1f%%", min_value=0, max_value=100
@@ -344,36 +343,35 @@ if screening_mode == "Multi-Resume Batch Leaderboard" and "batch_results" in st.
             selected_row = next(item for item in batch_list if item["Candidate File"] == selected_candidate_name)
             st.session_state["result"] = selected_row["Detailed Result"]
             st.session_state["resume_name"] = selected_candidate_name
-            st.success(f"Loaded {selected_candidate_name}. Scroll below to view complete insights.")
+            st.success(f"Loaded {selected_candidate_name}. Explore the tabs below to view complete insights.")
     else:
         st.warning("No candidates meet the current minimum score threshold.")
 
 # ============================================================
-# RESULTS (DEEP DIVE REPORT)
+# RESULTS (DEEP DIVE REPORT WITH TABS)
 # ============================================================
 if "result" in st.session_state:
     result = st.session_state["result"]
     st.divider()
 
-    # Report Header
-    render_html(
-        """
-        <div class="section-header">
-            <div class="section-title">Screening Report</div>
-            <div class="section-description">
-                Evidence-based compatibility analysis for the uploaded resume and target job.
-            </div>
-        </div>
-        """,
-        unsafe_allow_html=True
-    )
-    # Top Action Bar: PDF Brief Export
+    # Report Header & Export
     top_c1, top_c2 = st.columns([3, 1])
+    with top_c1:
+        render_html(
+            f"""
+            <div class="section-header" style="margin-bottom:0px;">
+                <div class="section-title">Screening Report: {st.session_state.get('resume_name', 'Candidate')}</div>
+                <div class="section-description">
+                    Evidence-based compatibility analysis for the uploaded resume and target job.
+                </div>
+            </div>
+            """,
+            unsafe_allow_html=True
+        )
     with top_c2:
         career_recs_pdf = get_alternative_pathways(result.get("resume_skills", []))
         candidate_label = st.session_state.get("resume_name", "Candidate")
         pdf_bytes = generate_candidate_pdf(candidate_label, result, career_recs_pdf)
-        
         st.download_button(
             label="📄 Download Evaluation PDF",
             data=pdf_bytes,
@@ -382,617 +380,459 @@ if "result" in st.session_state:
             use_container_width=True
         )
 
-    # Score Hero
-    score_col, metrics_col = st.columns([1.25, 1.75], gap="large")
-    with score_col:
-        score = float(result["final_score"])
-        render_html(
-            f"""
-            <div class="score-hero">
-                <div class="score-label">Overall Compatibility</div>
-                <div class="score-number">{score:.1f}%</div>
-                <div class="score-caption">
-                    Compatibility score based on semantic alignment and detected skill coverage.
-                </div>
-            </div>
-            """,
-            unsafe_allow_html=True
-        )
-        st.progress(min(score / 100, 1.0))
-
-    with metrics_col:
-        metric1, metric2 = st.columns(2)
-        with metric1:
-            render_html(
-                f"""
-                <div class="metric-card">
-                    <div class="metric-label">Semantic Compatibility</div>
-                    <div class="metric-value">{result["semantic_score"]:.1f}%</div>
-                    <div class="metric-subtitle">Resume ↔ job description meaning</div>
-                </div>
-                """,
-                unsafe_allow_html=True
-            )
-
-        with metric2:
-            if result.get("skill_score_available", True):
-                skill_value = f'{result["skill_score"]:.1f}%'
-                skill_subtitle = "Evidence-weighted skill score (Demonstrated=1.0, Listed Only=0.4)"
-            else:
-                skill_value = "Not available"
-                skill_subtitle = "No recognized job skills detected"
-
-            render_html(
-                f"""
-                <div class="metric-card">
-                    <div class="metric-label">Skill Coverage</div>
-                    <div class="metric-value">{skill_value}</div>
-                    <div class="metric-subtitle">{skill_subtitle}</div>
-                </div>
-                """,
-                unsafe_allow_html=True
-            )
-
-        st.write("")
-        metric3, metric4 = st.columns(2)
-        with metric3:
-            render_html(
-                f"""
-                <div class="metric-card">
-                    <div class="metric-label">Skills Matched</div>
-                    <div class="metric-value">{len(result["matched_skills"])}</div>
-                    <div class="metric-subtitle">Required skills found</div>
-                </div>
-                """,
-                unsafe_allow_html=True
-            )
-
-        with metric4:
-            render_html(
-                f"""
-                <div class="metric-card">
-                    <div class="metric-label">Skill Gaps</div>
-                    <div class="metric-value">{len(result["missing_skills"])}</div>
-                    <div class="metric-subtitle">Required skills not detected</div>
-                </div>
-                """,
-                unsafe_allow_html=True
-            )
-
-    # Alternative Career Pathways
-    career_recs = get_alternative_pathways(result.get("resume_skills", []))
-    if career_recs:
-        pathways_html = "".join([
-            f"""
-            <div style="background: rgba(255, 255, 255, 0.03); border: 1px solid rgba(255, 255, 255, 0.08); border-radius: 10px; padding: 14px 18px; margin-bottom: 10px;">
-                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
-                    <strong style="color: #60a5fa; font-size: 1.05rem;">{p['role']}</strong>
-                    <span style="background: rgba(59, 130, 246, 0.18); color: #93c5fd; padding: 3px 10px; border-radius: 999px; font-size: 0.85rem; font-weight: 700;">
-                        {p['fit']}% Transferable Fit
-                    </span>
-                </div>
-                <div style="font-size: 0.85rem; color: #94a3b8;">
-                    <strong>Transferable Strengths:</strong> {', '.join(p['skills']).title() if p['skills'] else 'Foundational tech competencies'}
-                </div>
-            </div>
-            """ for p in career_recs
-        ])
-
-        render_html(
-            f"""
-            <div style="margin-top: 24px; margin-bottom: 24px; padding: 20px; border-radius: 18px; background: rgba(15, 23, 42, 0.7); border: 1px solid #1e293b;">
-                <div style="font-size: 1.15rem; font-weight: 800; color: #f8fafc; margin-bottom: 6px; display: flex; align-items: center; gap: 8px;">
-                    <span>🧭</span> Alternative Career Pathways
-                </div>
-                <div style="font-size: 0.85rem; color: #64748b; margin-bottom: 16px;">
-                    Based on verified competencies found in this candidate's profile, here are adjacent specializations with strong cross-functional overlap:
-                </div>
-                {pathways_html}
-            </div>
-            """,
-            unsafe_allow_html=True
-        )
-
-    # Why did you get this score?
-    render_html(
-        """
-        <div class="section-header">
-            <div class="section-title">🔍 Why did you get this score?</div>
-            <div class="section-description">Transparent breakdown of how the compatibility score was calculated.</div>
-        </div>
-        """,
-        unsafe_allow_html=True
-    )
-
-    semantic_score = float(result["semantic_score"])
-    skill_score = float(result["skill_score"])
-    skill_score_available = result.get("skill_score_available", bool(result.get("required_skills")))
-    semantic_contribution = semantic_score * 0.60
-    skill_contribution = skill_score * 0.40
-
-    render_html(
-        f"""
-        <div class="explanation-card">
-            <div class="explanation-title">Compatibility Score Calculation</div>
-            <div class="explanation-text">
-                Your final compatibility score combines two components:
-                <br><br>
-                <strong>Semantic Compatibility:</strong> {semantic_score:.1f}% × 60% = {semantic_contribution:.1f} points
-                <br>
-                <strong>Skill Coverage:</strong> {f"{skill_score:.1f}% × 40% = {skill_contribution:.1f} points" if skill_score_available else "Not available for this job description"}
-                <br><br>
-                <strong>
-                {
-                    f"Final Score = {semantic_contribution:.1f} + {skill_contribution:.1f} = {result['final_score']:.1f}%"
-                    if skill_score_available
-                    else f"Final Score = Semantic Compatibility = {result['final_score']:.1f}%"
-                }
-                </strong>
-            </div>
-        </div>
-        """,
-        unsafe_allow_html=True
-    )
-
-    # Smart score explanation
-    matched_count = len(result.get("matched_skills", []))
-    required_count = len(result.get("required_skills", []))
-    missing_count = len(result.get("missing_skills", []))
-    score_explanation = result.get("score_explanation", [])
-
-    if not score_explanation:
-        if required_count == 0:
-            score_explanation = [
-                "No recognized skills were detected in the job description.",
-                "Skill coverage was excluded from the final score.",
-                f"Semantic compatibility contributed {result['final_score']:.1f}% to the final score."
-            ]
-        else:
-            score_explanation = [
-                f"{matched_count} of {required_count} detected required skills were matched.",
-                (
-                    f"{missing_count} detected job requirements were not found in the resume."
-                    if missing_count
-                    else "All detected required skills were found in the resume."
-                )
-            ]
-
-    explanation_items = "".join(f'<div style="margin-bottom:10px;">• {item}</div>' for item in score_explanation)
-    render_html(
-        f"""
-        <div class="explanation-card">
-            <div class="explanation-title">What influenced the result?</div>
-            <div class="explanation-text">{explanation_items}</div>
-        </div>
-        """,
-        unsafe_allow_html=True
-    )
-
-    # Skill Analysis Chips
-    render_html(
-        """
-        <div class="section-header">
-            <div class="section-title">🛠️ Skill Analysis</div>
-            <div class="section-description">Skills detected from the job description and evidence found in the resume.</div>
-        </div>
-        """,
-        unsafe_allow_html=True
-    )
-
-    skill_col1, skill_col2 = st.columns(2, gap="large")
-    with skill_col1:
-        st.markdown("### ✅ Matched Skills")
-        if result["matched_skills"]:
-            chips = "".join(f'<span class="chip chip-match">✓ {skill}</span>' for skill in result["matched_skills"])
-            st.markdown(chips, unsafe_allow_html=True)
-        else:
-            st.info("No required skills were matched.")
-
-    with skill_col2:
-        st.markdown("### ❌ Missing Skills")
-        if result["missing_skills"]:
-            chips = ""
-            for skill in result["missing_skills"]:
-                equiv = find_equivalent_skill(skill, result.get("resume_skills", []))
-                if equiv:
-                    chips += f'<span class="chip chip-neutral" style="border: 1px dashed #f59e0b; color: #fbbf24;">△ {skill} (Sub: {equiv})</span>'
-                else:
-                    chips += f'<span class="chip chip-missing">! {skill}</span>'
-            st.markdown(chips, unsafe_allow_html=True)
-        else:
-            if result.get("skill_score_available", True):
-                st.success("No detected skill gaps.")
-            else:
-                st.info("Skill gap analysis is not available because no recognized job skills were detected.")
+    st.write("")
 
     # ========================================================
-    # REQUIRED SKILL EVIDENCE (NATIVE EXPANDER)
+    # 4-TAB NAVIGATION TO ELIMINATE INFINITE SCROLL
     # ========================================================
-    with st.expander("🔎 Required Skill Evidence", expanded=True):
-        skill_evidence_levels = result.get("skill_evidence_levels", result.get("required_skill_evidence_levels", {}))
-        required_skill_evidence_levels = result.get("required_skill_evidence_levels", {})
-        required_skills = result.get("required_skills", [])
+    tab_summary, tab_skills, tab_resp_caps, tab_career = st.tabs([
+        "📊 Executive Summary", 
+        "🛠️ Skills & Evidence", 
+        "🎯 Responsibilities & Capabilities", 
+        "🧭 Career & Role Fit"
+    ])
 
-        if required_skills:
-            demonstrated = []
-            listed = []
-            supporting = []
-            missing = []
-
-            for skill in required_skills:
-                evidence = get_normalized_skill_evidence(skill, skill_evidence_levels, required_skill_evidence_levels)
-                raw_status = str(evidence.get("status", "missing")).strip().lower()
-
-                if raw_status in {"demonstrated", "strong", "direct"}:
-                    demonstrated.append((skill, evidence))
-                elif raw_status in {"listed", "listed_only", "listed only"}:
-                    listed.append((skill, evidence))
-                elif raw_status in {"supporting", "supporting_evidence", "supporting evidence", "related"}:
-                    supporting.append((skill, evidence))
-                else:
-                    missing.append((skill, evidence))
-
-            evidence_col1, evidence_col2 = st.columns(2, gap="large")
-            with evidence_col1:
-                if demonstrated:
-                    st.markdown("### 🟢 Demonstrated")
-                    for skill, evidence in demonstrated:
-                        sections = evidence.get("sections", [])
-                        section_text = ", ".join(str(s).replace("_", " ").title() for s in sections if str(s).strip()) or "Projects / Experience"
-                        render_html(
-                            f"""
-                            <div class="explanation-card" style="margin-bottom:10px;">
-                                <div class="explanation-title">✓ {skill}</div>
-                                <div class="explanation-text">
-                                    <strong>Status: Demonstrated</strong> • Direct evidence detected.<br><br>
-                                    Evidence source: {section_text}<br><br>
-                                    Direct evidence found in projects, internships, or work experience.
-                                </div>
-                            </div>
-                            """,
-                            unsafe_allow_html=True
-                        )
-
-                if supporting:
-                    st.markdown("### 🟡 Supporting Evidence")
-                    for skill, evidence in supporting:
-                        sections = evidence.get("sections", [])
-                        section_text = ", ".join(str(s).replace("_", " ").title() for s in sections if str(s).strip()) or "Education / Certifications"
-                        render_html(
-                            f"""
-                            <div class="explanation-card" style="margin-bottom:10px;">
-                                <div class="explanation-title">△ {skill}</div>
-                                <div class="explanation-text">
-                                    <strong>Status: Supporting Evidence</strong> • Supported by background qualifications.<br><br>
-                                    Evidence source: {section_text}<br><br>
-                                    Supported by relevant education or certifications without direct project experience.
-                                </div>
-                            </div>
-                            """,
-                            unsafe_allow_html=True
-                        )
-
-            with evidence_col2:
-                if listed:
-                    st.markdown("### 🔵 Listed Only")
-                    for skill, evidence in listed:
-                        sections = evidence.get("sections", ["skills"])
-                        section_text = ", ".join(str(s).replace("_", " ").title() for s in sections if str(s).strip()) or "Skills"
-                        render_html(
-                            f"""
-                            <div class="explanation-card" style="margin-bottom:10px;">
-                                <div class="explanation-title">• {skill}</div>
-                                <div class="explanation-text">
-                                    <strong>Status: Listed Only</strong> • Mentioned in skills section.<br><br>
-                                    Evidence source: {section_text}<br><br>
-                                    Mentioned in the skills section without direct project or experience evidence.
-                                </div>
-                            </div>
-                            """,
-                            unsafe_allow_html=True
-                        )
-
-                if missing:
-                    st.markdown("### 🔴 Missing")
-                    for skill, evidence in missing:
-                        render_html(
-                            f"""
-                            <div class="improvement-card" style="margin-bottom:10px;">
-                                <div class="improvement-title">! {skill}</div>
-                                <div class="improvement-text">
-                                    <strong>Status: Missing</strong> • No meaningful evidence detected.<br><br>
-                                    Evidence source: None detected<br><br>
-                                    No meaningful evidence for this required skill was detected in the resume.
-                                </div>
-                            </div>
-                            """,
-                            unsafe_allow_html=True
-                        )
-        else:
-            st.info("No required skill evidence is available.")
-
-    # ========================================================
-    # JOB RESPONSIBILITY ANALYSIS (NATIVE EXPANDER)
-    # ========================================================
-    with st.expander("🎯 Job Responsibility Analysis", expanded=True):
-        responsibility_analysis = result.get("responsibility_analysis", {})
-        responsibility_items = responsibility_analysis.get("responsibilities", [])
-
-        if responsibility_items:
-            strong_items = [i for i in responsibility_items if i.get("status") == "strong"]
-            related_items = [i for i in responsibility_items if i.get("status") == "related"]
-            missing_items = [i for i in responsibility_items if i.get("status") == "missing"]
-
-            if strong_items:
-                st.markdown("### 🟢 Strong Evidence")
-                for item in strong_items:
-                    evidence = item.get("evidence", [])
-                    evidence_text = ", ".join(str(e.get("evidence", "")) for e in evidence if e.get("evidence")) or "Explicitly supported by resume content."
-                    render_html(
-                        f"""
-                        <div class="explanation-card" style="margin-bottom:10px;">
-                            <div class="explanation-title">✓ {item.get('responsibility', 'Responsibility')}</div>
-                            <div class="explanation-text"><strong>Resume evidence:</strong> {evidence_text}</div>
-                        </div>
-                        """,
-                        unsafe_allow_html=True
-                    )
-
-            if related_items:
-                st.markdown("### 🟡 Related Evidence")
-                for item in related_items:
-                    related_names = [ev.get("skill", "") for ev in item.get("related_evidence", []) if ev.get("skill")]
-                    related_text = ", ".join(related_names) or "Related resume evidence detected."
-                    render_html(
-                        f"""
-                        <div class="explanation-card" style="margin-bottom:10px;">
-                            <div class="explanation-title">△ {item.get('responsibility', 'Responsibility')}</div>
-                            <div class="explanation-text">
-                                <strong>Related evidence:</strong> {related_text}<br><br>
-                                Related evidence supports the responsibility but does not prove direct performance.
-                            </div>
-                        </div>
-                        """,
-                        unsafe_allow_html=True
-                    )
-
-            if missing_items:
-                st.markdown("### 🔴 Not Demonstrated")
-                for item in missing_items:
-                    render_html(
-                        f"""
-                        <div class="improvement-card">
-                            <div class="improvement-title">! {item.get('responsibility', 'Responsibility')}</div>
-                            <div class="improvement-text">{item.get('reason', 'No meaningful evidence was detected.')}</div>
-                        </div>
-                        """,
-                        unsafe_allow_html=True
-                    )
-
-            summary = responsibility_analysis.get("summary", {})
-            st.caption(
-                f"Responsibility evidence: {summary.get('strong', len(strong_items))} strong • "
-                f"{summary.get('related', len(related_items))} related • "
-                f"{summary.get('missing', len(missing_items))} not demonstrated"
-            )
-        else:
+    # --------------------------------------------------------
+    # TAB 1: EXECUTIVE SUMMARY
+    # --------------------------------------------------------
+    with tab_summary:
+        score_col, metrics_col = st.columns([1.25, 1.75], gap="large")
+        with score_col:
+            score = float(result["final_score"])
             render_html(
-                """
-                <div class="explanation-card" style="border-left:3px solid #f59e0b;">
-                    <div class="explanation-title" style="color:#f59e0b;">📋 No Responsibilities Detected</div>
-                    <div class="explanation-text">
-                        Add responsibilities to the JD for deeper analysis.
+                f"""
+                <div class="score-hero">
+                    <div class="score-label">Overall Compatibility</div>
+                    <div class="score-number">{score:.1f}%</div>
+                    <div class="score-caption">
+                        Calculated from dense semantic alignment (60%) and evidence-weighted skill coverage (40%).
                     </div>
                 </div>
                 """,
                 unsafe_allow_html=True
             )
+            st.progress(min(score / 100, 1.0))
 
-    # Improvement Plan
-    render_html(
-        """
-        <div class="section-header">
-            <div class="section-title">🚀 How can you improve?</div>
-            <div class="section-description">Actionable recommendations based on the requirements detected in the job description.</div>
-        </div>
-        """,
-        unsafe_allow_html=True
-    )
-
-    if result["missing_skills"]:
-        for index, skill in enumerate(result["missing_skills"], start=1):
-            render_html(
-                f"""
-                <div class="improvement-card">
-                    <div class="improvement-title">{index}. {skill}</div>
-                    <div class="improvement-text">
-                        This requirement appears in the job description but was not detected in
-                        the resume. If you genuinely have this experience, consider clearly documenting
-                        the relevant project, coursework, certification, or work experience.
-                    </div>
-                </div>
-                """,
-                unsafe_allow_html=True
-            )
-    else:
-        if result.get("skill_score_available", True):
-            st.success("No detected skill gaps. The resume covers all recognized requirements from the job description.")
-            suggestions_list = result.get("suggestions", [])
-            upgrade_suggestions = [s for s in suggestions_list if "listed only" in s.lower() or "upgrade" in s.lower()]
-            for sug in upgrade_suggestions:
-                render_html(
-                    f'''<div class="improvement-card" style="border-left:3px solid #f59e0b;">
-                        <div class="improvement-title" style="color:#f59e0b;">⬆ Strengthen Evidence</div>
-                        <div class="improvement-text">{sug}</div>
-                    </div>''',
-                    unsafe_allow_html=True
-                )
-        else:
-            st.info("No recognized job skills were detected, so skill-specific improvement recommendations cannot be generated.")
-
-    # ========================================================
-    # RESUME BULLET-POINT OPTIMIZER (NATIVE EXPANDER)
-    # ========================================================
-    if result.get("missing_skills"):
-        with st.expander("✨ Resume Bullet-Point Optimizer (ATS Formatted)", expanded=True):
-            st.markdown(
-                "<div style='font-size:13px; color:#94a3b8; margin-bottom:12px;'>"
-                "Select any identified skill gap to generate high-impact, action-driven bullet points "
-                "ready to paste into your resume."
-                "</div>",
-                unsafe_allow_html=True
-            )
-            
-            selected_gap = st.selectbox(
-                "Choose a skill to generate bullet points for:",
-                options=result["missing_skills"],
-                key="bullet_skill_selector"
-            )
-            
-            if selected_gap:
-                bullets = generate_resume_bullets(selected_gap)
-                for b in bullets:
-                    st.code(b, language="text")
-                    st.caption("Click the copy icon on the top right to paste directly into your resume.")    
-
-    # Candidate Strengths
-    render_html(
-        """
-        <div class="section-header">
-            <div class="section-title">💪 Candidate Strengths</div>
-            <div class="section-description">Evidence detected from skills that overlap with the target job requirements.</div>
-        </div>
-        """,
-        unsafe_allow_html=True
-    )
-
-    if result["matched_skills"]:
-        chips = "".join(f'<span class="chip chip-match">✓ {skill}</span>' for skill in result["matched_skills"])
-        st.markdown(chips, unsafe_allow_html=True)
-    else:
-        if result.get("skill_score_available", True):
-            st.info("No matching strengths were detected.")
-        else:
-            st.info("Skill-based strengths could not be compared because no recognized job skills were detected.")
-
-    # ========================================================
-    # BERT RESUME CLASSIFICATION (NATIVE EXPANDER)
-    # ========================================================
-    with st.expander("🧠 BERT Resume Classification", expanded=True):
-        bert_categories = result.get("bert_categories", [])
-        if bert_categories:
-            bert_cols = st.columns(len(bert_categories))
-            for index, prediction in enumerate(bert_categories):
-                with bert_cols[index]:
-                    render_html(
-                        f"""
-                        <div class="bert-card">
-                            <div class="bert-rank">RANK {index + 1}</div>
-                            <div class="bert-category">{prediction["category"].title()}</div>
-                            <div class="bert-confidence">{prediction["confidence"]:.2f}%</div>
-                        </div>
-                        """,
-                        unsafe_allow_html=True
-                    )
-            st.caption(
-                "BERT confidence represents classification probability across resume categories. "
-                "⚠️ Low confidence (< 50%) indicates ambiguous resume text; it does not degrade overall compatibility score."
-            )
-
-    # Job-Relevant Capabilities
-    render_html(
-        """
-        <div class="section-header">
-            <div class="section-title">🎯 Job-Relevant Capability Analysis</div>
-            <div class="section-description">Higher-level capabilities relevant to the target job, based on recognized job-skill evidence.</div>
-        </div>
-        """,
-        unsafe_allow_html=True
-    )
-
-    job_capabilities = analyze_job_relevant_capabilities(
-        result.get("resume_skills", []),
-        result.get("required_skills", [])
-    )
-
-    if job_capabilities:
-        capability_columns = st.columns(2)
-        for index, capability in enumerate(job_capabilities):
-            with capability_columns[index % 2]:
-                name = capability.get("capability", "Unknown")
-                description = capability.get("description", "")
-                coverage = capability.get("coverage", 0.0)
-                alignment = capability.get("alignment", "Low Alignment")
-                requirement_type = capability.get("requirement_type", "Supporting")
-                matched = capability.get("matched_skills", [])
-                missing = capability.get("missing_skills", [])
-
-                status = "✓ Strong Alignment" if alignment == "Strong Alignment" else ("△ Partial Alignment" if alignment == "Partial Alignment" else "! Low Alignment")
-                type_icon = "🎯" if requirement_type == "Required" else "↳"
-
+        with metrics_col:
+            metric1, metric2 = st.columns(2)
+            with metric1:
                 render_html(
                     f"""
-                    <div class="capability-card">
-                        <div class="capability-name">{name.title()}</div>
-                        <div class="capability-status">
-                            {type_icon} {requirement_type} • {status} • {coverage:.1f}% evidence coverage
-                        </div>
-                        <div class="capability-description">{description}</div>
+                    <div class="metric-card">
+                        <div class="metric-label">Semantic Compatibility</div>
+                        <div class="metric-value">{result["semantic_score"]:.1f}%</div>
+                        <div class="metric-subtitle">MiniLM semantic meaning alignment</div>
                     </div>
                     """,
                     unsafe_allow_html=True
                 )
 
-                if matched:
-                    st.caption("Matched job evidence")
-                    st.markdown("".join(f'<span class="chip chip-match">✓ {s}</span>' for s in matched), unsafe_allow_html=True)
-
-                if missing:
-                    st.caption("Capability gaps")
-                    st.markdown("".join(f'<span class="chip chip-missing">! {s}</span>' for s in missing), unsafe_allow_html=True)
-    else:
-        st.info("No higher-level capabilities were directly linked to the recognized required skills for this job.")
-
-    # Role Suitability & Recommendations
-    render_html(
-        """
-        <div class="section-header">
-            <div class="section-title">🎯 Role Suitability & Recommended Roles</div>
-            <div class="section-description">Roles ranked using skills detected from the candidate's resume.</div>
-        </div>
-        """,
-        unsafe_allow_html=True
-    )
-
-    role_recommendations = recommend_roles(
-        result.get("resume_skills", []),
-        skill_evidence_levels=result.get("skill_evidence_levels", {})
-    )
-
-    if role_recommendations:
-        top_roles = role_recommendations[:3]
-        role_columns = st.columns(len(top_roles))
-
-        for index, role_result in enumerate(top_roles):
-            with role_columns[index]:
-                coverage = role_result["coverage"]
-                status = role_result["status"]
-                status_icon = "🟢" if status == "Strong Fit" else ("🟡" if status == "Moderate Fit" else "🔴")
-                matched_cnt = len(role_result["matched_skills"])
-                missing_cnt = len(role_result["missing_skills"])
+            with metric2:
+                if result.get("skill_score_available", True):
+                    skill_value = f'{result["skill_score"]:.1f}%'
+                    skill_subtitle = "Evidence-weighted skill coverage"
+                else:
+                    skill_value = "Not available"
+                    skill_subtitle = "No recognized job skills detected"
 
                 render_html(
                     f"""
                     <div class="metric-card">
-                        <div class="metric-label">RANK {index + 1}</div>
-                        <div class="metric-value" style="font-size:22px;">{role_result["role"]}</div>
-                        <div style="color:#93c5fd;font-size:24px;font-weight:800;margin-top:8px;">{coverage:.1f}%</div>
-                        <div class="metric-subtitle">{status_icon} {status} • {matched_cnt} matched • {missing_cnt} gaps</div>
+                        <div class="metric-label">Skill Coverage</div>
+                        <div class="metric-value">{skill_value}</div>
+                        <div class="metric-subtitle">{skill_subtitle}</div>
                     </div>
                     """,
                     unsafe_allow_html=True
                 )
 
+            # 3-BUCKET SKILL EVIDENCE SUMMARY
+            st.write("")
+            skill_evidence_levels = result.get("skill_evidence_levels", result.get("required_skill_evidence_levels", {}))
+            required_skill_evidence_levels = result.get("required_skill_evidence_levels", {})
+            required_skills = result.get("required_skills", [])
+
+            c_dem, c_list, c_miss = 0, 0, 0
+            for sk in required_skills:
+                ev = get_normalized_skill_evidence(sk, skill_evidence_levels, required_skill_evidence_levels)
+                st_code = str(ev.get("status", "missing")).strip().lower()
+                if st_code in {"demonstrated", "strong", "direct"}:
+                    c_dem += 1
+                elif st_code in {"listed", "listed_only", "listed only", "supporting", "related"}:
+                    c_list += 1
+                else:
+                    c_miss += 1
+
+            m1, m2, m3 = st.columns(3)
+            with m1:
+                render_html(
+                    f"""<div class="metric-card" style="border-left: 3px solid #10b981;">
+                        <div class="metric-label">Demonstrated (1.0x)</div>
+                        <div class="metric-value" style="color:#34d399;">{c_dem}</div>
+                        <div class="metric-subtitle">Found in projects / work</div>
+                    </div>""",
+                    unsafe_allow_html=True
+                )
+            with m2:
+                render_html(
+                    f"""<div class="metric-card" style="border-left: 3px solid #3b82f6;">
+                        <div class="metric-label">Listed Only (0.4x)</div>
+                        <div class="metric-value" style="color:#60a5fa;">{c_list}</div>
+                        <div class="metric-subtitle">Skills list / education</div>
+                    </div>""",
+                    unsafe_allow_html=True
+                )
+            with m3:
+                render_html(
+                    f"""<div class="metric-card" style="border-left: 3px solid #ef4444;">
+                        <div class="metric-label">Missing (0.0x)</div>
+                        <div class="metric-value" style="color:#f87171;">{c_miss}</div>
+                        <div class="metric-subtitle">No evidence found</div>
+                    </div>""",
+                    unsafe_allow_html=True
+                )
+
+        # Transparent score calculation card
+        st.write("")
+        semantic_score = float(result["semantic_score"])
+        skill_score = float(result["skill_score"])
+        skill_score_available = result.get("skill_score_available", bool(result.get("required_skills")))
+        semantic_contribution = semantic_score * 0.60
+        skill_contribution = skill_score * 0.40
+
+        render_html(
+            f"""
+            <div class="explanation-card">
+                <div class="explanation-title">🔍 Explainable Scoring Breakdown</div>
+                <div class="explanation-text">
+                    <strong>Formula:</strong> (Semantic Score × 60%) + (Skill Coverage × 40%)<br><br>
+                    • <strong>Semantic Alignment:</strong> {semantic_score:.1f}% × 60% = {semantic_contribution:.1f} points<br>
+                    • <strong>Evidence-Weighted Skills:</strong> {f"{skill_score:.1f}% × 40% = {skill_contribution:.1f} points" if skill_score_available else "Excluded (no job skills detected)"}<br><br>
+                    <strong>Final Compatibility = {result['final_score']:.1f}%</strong>
+                </div>
+            </div>
+            """,
+            unsafe_allow_html=True
+        )
+
+    # --------------------------------------------------------
+    # TAB 2: SKILLS & EVIDENCE
+    # --------------------------------------------------------
+    with tab_skills:
+        skill_col1, skill_col2 = st.columns(2, gap="large")
+        with skill_col1:
+            st.markdown("### ✅ Matched Skills")
+            if result["matched_skills"]:
+                chips = "".join(f'<span class="chip chip-match">✓ {skill}</span>' for skill in result["matched_skills"])
+                st.markdown(chips, unsafe_allow_html=True)
+            else:
+                st.info("No required skills were matched.")
+
+        with skill_col2:
+            st.markdown("### ❌ Missing Skills & Valid Substitutes")
+            if result["missing_skills"]:
+                chips = ""
+                for skill in result["missing_skills"]:
+                    equiv = find_equivalent_skill(skill, result.get("resume_skills", []))
+                    if equiv:
+                        chips += f'<span class="chip chip-neutral" style="border: 1px dashed #f59e0b; color: #fbbf24;">△ {skill} (Sub: {equiv})</span>'
+                    else:
+                        chips += f'<span class="chip chip-missing">! {skill}</span>'
+                st.markdown(chips, unsafe_allow_html=True)
+            else:
+                st.success("No detected skill gaps.")
+
+        st.write("")
+        with st.expander("🔎 Detailed Skill Evidence Drill-Down", expanded=True):
+            if required_skills:
+                demonstrated = []
+                listed = []
+                supporting = []
+                missing = []
+
+                for skill in required_skills:
+                    evidence = get_normalized_skill_evidence(skill, skill_evidence_levels, required_skill_evidence_levels)
+                    raw_status = str(evidence.get("status", "missing")).strip().lower()
+
+                    if raw_status in {"demonstrated", "strong", "direct"}:
+                        demonstrated.append((skill, evidence))
+                    elif raw_status in {"listed", "listed_only", "listed only"}:
+                        listed.append((skill, evidence))
+                    elif raw_status in {"supporting", "supporting_evidence", "supporting evidence", "related"}:
+                        supporting.append((skill, evidence))
+                    else:
+                        missing.append((skill, evidence))
+
+                evidence_col1, evidence_col2 = st.columns(2, gap="large")
+                with evidence_col1:
+                    if demonstrated:
+                        st.markdown("#### 🟢 Demonstrated in Work / Projects")
+                        for skill, evidence in demonstrated:
+                            sections = evidence.get("sections", [])
+                            section_text = ", ".join(str(s).replace("_", " ").title() for s in sections if str(s).strip()) or "Projects / Experience"
+                            render_html(
+                                f"""
+                                <div class="explanation-card" style="margin-bottom:10px;">
+                                    <div class="explanation-title">✓ {skill}</div>
+                                    <div class="explanation-text">
+                                        <strong>Status: Demonstrated (1.0x)</strong><br>
+                                        Verified in: <strong>{section_text}</strong><br>
+                                        Demonstrated project delivery, internships, or professional work.
+                                    </div>
+                                </div>
+                                """,
+                                unsafe_allow_html=True
+                            )
+
+                    if supporting:
+                        st.markdown("#### 🟡 Supporting Qualifications")
+                        for skill, evidence in supporting:
+                            sections = evidence.get("sections", [])
+                            section_text = ", ".join(str(s).replace("_", " ").title() for s in sections if str(s).strip()) or "Education / Certifications"
+                            render_html(
+                                f"""
+                                <div class="explanation-card" style="margin-bottom:10px;">
+                                    <div class="explanation-title">△ {skill}</div>
+                                    <div class="explanation-text">
+                                        <strong>Status: Supporting Evidence (0.7x)</strong><br>
+                                        Verified in: <strong>{section_text}</strong>
+                                    </div>
+                                </div>
+                                """,
+                                unsafe_allow_html=True
+                            )
+
+                with evidence_col2:
+                    if listed:
+                        st.markdown("#### 🔵 Listed Only (Partial Credit)")
+                        for skill, evidence in listed:
+                            render_html(
+                                f"""
+                                <div class="explanation-card" style="margin-bottom:10px;">
+                                    <div class="explanation-title">• {skill}</div>
+                                    <div class="explanation-text">
+                                        <strong>Status: Listed Only (0.4x)</strong><br>
+                                        Found only in Skills section without active project sentence context.
+                                    </div>
+                                </div>
+                                """,
+                                unsafe_allow_html=True
+                            )
+
+                    if missing:
+                        st.markdown("#### 🔴 Missing Requirements")
+                        for skill, evidence in missing:
+                            render_html(
+                                f"""
+                                <div class="improvement-card" style="margin-bottom:10px;">
+                                    <div class="improvement-title">! {skill}</div>
+                                    <div class="improvement-text">
+                                        <strong>Status: Missing (0.0x)</strong><br>
+                                        No meaningful evidence detected across resume sections.
+                                    </div>
+                                </div>
+                                """,
+                                unsafe_allow_html=True
+                            )
+            else:
+                st.info("No required skill evidence is available.")
+
+        # ATS BULLET OPTIMIZER
+        if result.get("missing_skills"):
+            st.write("")
+            with st.expander("✨ Resume Bullet-Point Optimizer (ATS Formatted)", expanded=True):
+                st.markdown(
+                    "<div style='font-size:13px; color:#94a3b8; margin-bottom:12px;'>"
+                    "Action-driven bullet templates customized to address candidate skill gaps. "
+                    "<strong>Note:</strong> Candidates should only include bullets for competencies they legitimately practiced."
+                    "</div>",
+                    unsafe_allow_html=True
+                )
+                
+                selected_gap = st.selectbox(
+                    "Choose a gap to generate bullet points for:",
+                    options=result["missing_skills"],
+                    key="bullet_skill_selector"
+                )
+                
+                if selected_gap:
+                    bullets = generate_resume_bullets(selected_gap)
+                    for b in bullets:
+                        st.code(b, language="text")
+
+    # --------------------------------------------------------
+    # TAB 3: RESPONSIBILITIES & CAPABILITIES
+    # --------------------------------------------------------
+    with tab_resp_caps:
+        with st.expander("🎯 Job Responsibility Analysis", expanded=True):
+            responsibility_analysis = result.get("responsibility_analysis", {})
+            responsibility_items = responsibility_analysis.get("responsibilities", [])
+
+            if responsibility_items:
+                for item in responsibility_items:
+                    st_val = item.get("status")
+                    title = item.get("responsibility", "Responsibility")
+                    if st_val == "strong":
+                        ev_txt = ", ".join(str(e.get("evidence", "")) for e in item.get("evidence", [])) or "Explicitly demonstrated in resume text."
+                        render_html(
+                            f"""<div class="explanation-card" style="margin-bottom:10px; border-left:3px solid #10b981;">
+                                <div class="explanation-title">✓ {title}</div>
+                                <div class="explanation-text"><strong>Resume Evidence:</strong> {ev_txt}</div>
+                            </div>""",
+                            unsafe_allow_html=True
+                        )
+                    elif st_val == "related":
+                        ev_txt = ", ".join(ev.get("skill", "") for ev in item.get("related_evidence", [])) or "Related skill context"
+                        render_html(
+                            f"""<div class="explanation-card" style="margin-bottom:10px; border-left:3px solid #f59e0b;">
+                                <div class="explanation-title">△ {title}</div>
+                                <div class="explanation-text"><strong>Related Context:</strong> {ev_txt}</div>
+                            </div>""",
+                            unsafe_allow_html=True
+                        )
+                    else:
+                        render_html(
+                            f"""<div class="improvement-card" style="margin-bottom:10px;">
+                                <div class="improvement-title">! {title}</div>
+                                <div class="improvement-text">{item.get('reason', 'No meaningful evidence detected.')}</div>
+                            </div>""",
+                            unsafe_allow_html=True
+                        )
+            else:
+                st.info("Paste full responsibility sentences into the JD to trigger deep responsibility matching.")
+
+        st.write("")
+        st.markdown("### 🎯 High-Level Capability Analysis")
+        job_capabilities = analyze_job_relevant_capabilities(
+            result.get("resume_skills", []),
+            result.get("required_skills", [])
+        )
+        if job_capabilities:
+            capability_columns = st.columns(2)
+            for index, capability in enumerate(job_capabilities):
+                with capability_columns[index % 2]:
+                    name = capability.get("capability", "Unknown")
+                    description = capability.get("description", "")
+                    coverage = capability.get("coverage", 0.0)
+                    alignment = capability.get("alignment", "Low Alignment")
+                    requirement_type = capability.get("requirement_type", "Supporting")
+                    matched = capability.get("matched_skills", [])
+                    missing = capability.get("missing_skills", [])
+
+                    status = "✓ Strong Alignment" if alignment == "Strong Alignment" else ("△ Partial Alignment" if alignment == "Partial Alignment" else "! Low Alignment")
+                    type_icon = "🎯" if requirement_type == "Required" else "↳"
+
+                    render_html(
+                        f"""
+                        <div class="capability-card">
+                            <div class="capability-name">{name.title()}</div>
+                            <div class="capability-status">
+                                {type_icon} {requirement_type} • {status} • {coverage:.1f}% evidence coverage
+                            </div>
+                            <div class="capability-description">{description}</div>
+                        </div>
+                        """,
+                        unsafe_allow_html=True
+                    )
+                    if matched:
+                        st.caption("Matched job evidence")
+                        st.markdown("".join(f'<span class="chip chip-match">✓ {s}</span>' for s in matched), unsafe_allow_html=True)
+                    if missing:
+                        st.caption("Capability gaps")
+                        st.markdown("".join(f'<span class="chip chip-missing">! {s}</span>' for s in missing), unsafe_allow_html=True)
+
+    # --------------------------------------------------------
+    # TAB 4: CAREER & ROLE FIT
+    # --------------------------------------------------------
+    with tab_career:
+        # Alternative Career Pathways (With clear explanation to avoid contradiction)
+        career_recs = get_alternative_pathways(result.get("resume_skills", []))
+        if career_recs:
+            pathways_html = "".join([
+                f"""
+                <div style="background: rgba(255, 255, 255, 0.03); border: 1px solid rgba(255, 255, 255, 0.08); border-radius: 10px; padding: 14px 18px; margin-bottom: 10px;">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
+                        <strong style="color: #60a5fa; font-size: 1.05rem;">{p['role']}</strong>
+                        <span style="background: rgba(59, 130, 246, 0.18); color: #93c5fd; padding: 3px 10px; border-radius: 999px; font-size: 0.85rem; font-weight: 700;">
+                            {p['fit']}% Universal Skill Transferability
+                        </span>
+                    </div>
+                    <div style="font-size: 0.85rem; color: #94a3b8;">
+                        <strong>Transferable Competencies:</strong> {', '.join(p['skills']).title() if p['skills'] else 'Foundational tech competencies'}
+                    </div>
+                </div>
+                """ for p in career_recs
+            ])
+
+            render_html(
+                f"""
+                <div style="margin-top: 10px; margin-bottom: 24px; padding: 20px; border-radius: 18px; background: rgba(15, 23, 42, 0.7); border: 1px solid #1e293b;">
+                    <div style="font-size: 1.15rem; font-weight: 800; color: #f8fafc; margin-bottom: 4px; display: flex; align-items: center; gap: 8px;">
+                        <span>🧭</span> Cross-Functional Career Pathways
+                    </div>
+                    <div style="font-size: 0.82rem; color: #64748b; margin-bottom: 16px;">
+                        Evaluates overall candidate skills against global market role profiles (independent of the current target JD).
+                    </div>
+                    {pathways_html}
+                </div>
+                """,
+                unsafe_allow_html=True
+            )
+
+        # Role Recommendations
+        st.markdown("### 🎯 Recommended Roles (Based on Verified Resume Skills)")
+        role_recommendations = recommend_roles(
+            result.get("resume_skills", []),
+            skill_evidence_levels=result.get("skill_evidence_levels", {})
+        )
+
+        if role_recommendations:
+            top_roles = role_recommendations[:3]
+            role_columns = st.columns(len(top_roles))
+            for index, role_result in enumerate(top_roles):
+                with role_columns[index]:
+                    coverage = role_result["coverage"]
+                    status = role_result["status"]
+                    status_icon = "🟢" if status == "Strong Fit" else ("🟡" if status == "Moderate Fit" else "🔴")
+                    matched_cnt = len(role_result["matched_skills"])
+                    missing_cnt = len(role_result["missing_skills"])
+
+                    render_html(
+                        f"""
+                        <div class="metric-card">
+                            <div class="metric-label">RANK {index + 1}</div>
+                            <div class="metric-value" style="font-size:20px;">{role_result["role"]}</div>
+                            <div style="color:#93c5fd;font-size:24px;font-weight:800;margin-top:8px;">{coverage:.1f}%</div>
+                            <div class="metric-subtitle">{status_icon} {status} • {matched_cnt} matched • {missing_cnt} gaps</div>
+                        </div>
+                        """,
+                        unsafe_allow_html=True
+                    )
+
+        # Supporting BERT classification
+        st.write("")
+        with st.expander("🧠 Supporting Module: BERT Resume Classification", expanded=False):
+            bert_categories = result.get("bert_categories", [])
+            if bert_categories:
+                bert_cols = st.columns(len(bert_categories))
+                for index, prediction in enumerate(bert_categories):
+                    with bert_cols[index]:
+                        render_html(
+                            f"""
+                            <div class="bert-card">
+                                <div class="bert-rank">RANK {index + 1}</div>
+                                <div class="bert-category">{prediction["category"].title()}</div>
+                                <div class="bert-confidence">{prediction["confidence"]:.2f}%</div>
+                            </div>
+                            """,
+                            unsafe_allow_html=True
+                        )
+                st.caption(
+                    "Note: Fine-tuned BERT sequence classification acts as an auxiliary domain predictor. "
+                    "It does not penalize or alter the deterministic MiniLM + evidence scoring formula."
+                )
+
+    # Reset & Responsible AI
     st.write("")
     col_l, col_m, col_r = st.columns([1, 2, 1])
     with col_m:
@@ -1004,10 +844,10 @@ if "result" in st.session_state:
     render_html(
         """
         <div class="responsible-ai" style="margin-top: 25px;">
-            <strong>Responsible AI Notice</strong><br><br>
-            This system provides decision-support information based on the uploaded resume and job description.
-            Compatibility scores, BERT classifications, and detected capabilities should not be treated as hiring
-            probabilities or used as the sole basis for employment decisions.
+            <strong>Responsible AI & Ethical Hiring Notice</strong><br><br>
+            This system provides augmented decision-support information for talent evaluation.
+            Compatibility scores, BERT domain classifications, and detected capabilities are heuristic indicators 
+            and should never serve as the sole or automated determinant for employment decisions.
         </div>
         """,
         unsafe_allow_html=True
@@ -1019,7 +859,7 @@ if "result" in st.session_state:
 render_html(
     """
     <div class="footer">
-        ResumeIQ • Deep Learning • NLP • Explainable Resume Intelligence
+        ResumeIQ • Explainable Deep Learning & NLP Resume Intelligence
     </div>
     """,
     unsafe_allow_html=True
