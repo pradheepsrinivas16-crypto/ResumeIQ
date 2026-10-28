@@ -645,43 +645,6 @@ if "result" in st.session_state:
                                 """,
                                 unsafe_allow_html=True
                             )
-
-                    if supporting:
-                        st.markdown("#### 🟡 Supporting Qualifications")
-                        for skill, evidence in supporting:
-                            sections = evidence.get("sections", [])
-                            section_text = ", ".join(str(s).replace("_", " ").title() for s in sections if str(s).strip()) or "Education / Certifications"
-                            render_html(
-                                f"""
-                                <div class="explanation-card" style="margin-bottom:10px;">
-                                    <div class="explanation-title">△ {skill}</div>
-                                    <div class="explanation-text">
-                                        <strong>Status: Supporting Evidence (0.7x)</strong><br>
-                                        Verified in: <strong>{section_text}</strong>
-                                    </div>
-                                </div>
-                                """,
-                                unsafe_allow_html=True
-                            )
-
-                with evidence_col2:
-                    if listed:
-                        st.markdown("#### 🔵 Listed Only (Partial Credit)")
-                        for skill, evidence in listed:
-                            render_html(
-                                f"""
-                                <div class="explanation-card" style="margin-bottom:10px;">
-                                    <div class="explanation-title">• {skill}</div>
-                                    <div class="explanation-text">
-                                        <strong>Status: Listed Only (0.4x)</strong><br>
-                                        Found only in Skills section without active project sentence context.
-                                    </div>
-                                </div>
-                                """,
-                                unsafe_allow_html=True
-                            )
-
-                    
             else:
                 st.info("No required skill evidence is available.")
 
