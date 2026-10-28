@@ -1871,43 +1871,46 @@ def extract_resume_sections(text):
 
 def find_contextual_skill_evidence(resume_text, skill):
     """
-    Find skill evidence only inside actual resume-content sections.
-
-    Contact information is ignored. Therefore a GitHub profile URL
-    alone will not count as GitHub development experience.
+    Find skill evidence inside actual resume-content sections.
+    Ignores contact/links so URLs don't trigger false positives.
     """
     sections = extract_resume_sections(resume_text)
     aliases = SKILL_ALIASES.get(skill, [skill])
     evidence = []
 
     for section_name, section_text in sections.items():
-
         if section_name in {"contact", "soft_skills"}:
             continue
-
         if not section_text.strip():
             continue
 
         normalized_section = normalize_text(section_text)
-
         for alias in aliases:
-            alias = normalize_text(alias)
-
-            pattern = (
-                r"(?<!\w)"
-                + re.escape(alias)
-                + r"(?!\w)"
-            )
-
+            alias_norm = normalize_text(alias)
+            pattern = r"(?<!\w)" + re.escape(alias_norm) + r"(?!\w)"
             if re.search(pattern, normalized_section):
                 evidence.append({
                     "section": section_name,
                     "evidence": alias,
-                    "strength": SECTION_STRENGTH.get(
-                        section_name,
-                        "supporting"
-                    ),
+                    "strength": SECTION_STRENGTH.get(section_name, "supporting"),
                 })
+                break
+
+    # Substantive fallback: if section header was ambiguous but term is in project/experience body
+    if not evidence:
+        substantive_body = normalize_text(
+            "\n".join(v for k, v in sections.items() if k not in {"contact", "soft_skills"})
+        )
+        for alias in aliases:
+            alias_norm = normalize_text(alias)
+            pattern = r"(?<!\w)" + re.escape(alias_norm) + r"(?!\w)"
+            if re.search(pattern, substantive_body):
+                evidence.append({
+                    "section": "projects",
+                    "evidence": alias,
+                    "strength": "strong",
+                })
+                break
 
     return evidence
 def classify_skill_evidence(resume_text, skill):
@@ -2241,130 +2244,64 @@ def parse_job_skill_sections(job_description):
 
 
 def compare_skill_group(resume_text, skills, resume_skill_set):
-
-
     matched_skills = []
-
     related_skills = []
-
     missing_skills = []
-
     skill_evidence = {}
 
-
     for skill in skills:
-
-
-        # ----------------------------------------------------
-
         # 1. DIRECT EVIDENCE
-
-        # ----------------------------------------------------
-
-
-        evidence = find_contextual_skill_evidence(
-            resume_text,
-            skill
-        )
-
-
+        evidence = find_contextual_skill_evidence(resume_text, skill)
         if evidence:
-
-
             matched_skills.append(skill)
-
-
             skill_evidence[skill] = {
-
                 "type": "direct",
-
                 "evidence": evidence,
-
                 "confidence": 1.0
-
             }
-
-
             continue
 
-
-        # ----------------------------------------------------
-
-        # 2. RELATED EVIDENCE
-
-        # ----------------------------------------------------
-
-        # Related skills are NOT treated as direct matches.
-
-        # They only provide supporting evidence.
-
-        # ----------------------------------------------------
-
-
-        related_found = [
-
-            related
-
-            for related in RELATED_SKILLS.get(skill, [])
-
-            if related in resume_skill_set
-
-        ]
-
-
-        if related_found:
-
-
-            related_skills.append(skill)
-
-
+        # 2. VALID SUBSTITUTE TOOL (e.g. Figma for Adobe XD)
+        substitute_tool = find_equivalent_skill(skill, resume_skill_set)
+        if substitute_tool:
+            # Add to matched_skills so it earns coverage points
+            matched_skills.append(skill)
             skill_evidence[skill] = {
-
-                "type": "related",
-
-                "evidence": related_found,
-
-                "confidence": 0.5
-
+                "type": "substitute",
+                "substitute_tool": substitute_tool,
+                "evidence": [{"section": "projects", "evidence": substitute_tool, "strength": "supporting"}],
+                "confidence": 0.75
             }
-
-
             continue
 
+        # 3. RELATED EVIDENCE
+        related_found = [
+            related for related in RELATED_SKILLS.get(skill, [])
+            if related in resume_skill_set
+        ]
+        if related_found:
+            related_skills.append(skill)
+            skill_evidence[skill] = {
+                "type": "related",
+                "evidence": related_found,
+                "confidence": 0.5
+            }
+            continue
 
-        # ----------------------------------------------------
-
-        # 3. MISSING
-
-        # ----------------------------------------------------
-
-
+        # 4. MISSING
         missing_skills.append(skill)
-
-
         skill_evidence[skill] = {
-
             "type": "missing",
-
             "evidence": [],
-
             "confidence": 0.0
-
         }
 
-
     return (
-
         matched_skills,
-
         related_skills,
-
         missing_skills,
-
         skill_evidence
-
     )
-
 
 # ============================================================
 

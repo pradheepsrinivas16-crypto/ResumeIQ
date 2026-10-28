@@ -681,21 +681,7 @@ if "result" in st.session_state:
                                 unsafe_allow_html=True
                             )
 
-                    if missing:
-                        st.markdown("#### 🔴 Missing Requirements")
-                        for skill, evidence in missing:
-                            render_html(
-                                f"""
-                                <div class="improvement-card" style="margin-bottom:10px;">
-                                    <div class="improvement-title">! {skill}</div>
-                                    <div class="improvement-text">
-                                        <strong>Status: Missing (0.0x)</strong><br>
-                                        No meaningful evidence detected across resume sections.
-                                    </div>
-                                </div>
-                                """,
-                                unsafe_allow_html=True
-                            )
+                    
             else:
                 st.info("No required skill evidence is available.")
 
