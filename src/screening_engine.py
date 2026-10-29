@@ -535,14 +535,24 @@ def analyze_job_responsibilities(resume_text, job_description):
         direct_evidence = []
         related_evidence = []
 
+        raw_direct = []
         for pattern in direct_patterns:
             normalized_pattern = normalize_text(pattern)
             if normalized_pattern and normalized_pattern in normalized_resume:
-                direct_evidence.append({
-                    "evidence": pattern,
-                    "source": "experience/project/education"
-                })
+                raw_direct.append(pattern)
 
+        # Drop substrings so we don't get "responsive, responsive e-commerce"
+        unique_direct = []
+        # Sort by length descending so longer phrases take precedence
+        for pat in sorted(raw_direct, key=len, reverse=True):
+            if not any(pat in existing for existing in unique_direct):
+                unique_direct.append(pat)
+
+        for pat in unique_direct:
+            direct_evidence.append({
+                "evidence": pat,
+                "source": "experience/project/education"
+            })
         for related_skill in rule["related_skills"]:
             if related_skill not in resume_skills:
                 continue

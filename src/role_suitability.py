@@ -267,12 +267,14 @@ def recommend_roles(resume_skills, skill_evidence_levels=None):
     # Highest weighted coverage first.
     # If coverage is equal, prefer the role with
     # more matched skills.
+    # Tie-break by coverage first, then total matched skills, then fewest missing
     results.sort(
-        key=lambda item: (
-            item["coverage"],
-            len(item["matched_skills"]),
+        key=lambda x: (
+            x["coverage"],
+            len(x.get("matched_skills", [])),
+            -len(x.get("missing_skills", []))
         ),
-        reverse=True,
+        reverse=True
     )
 
     return results
