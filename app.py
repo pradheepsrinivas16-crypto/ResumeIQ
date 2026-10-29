@@ -5,7 +5,7 @@ import pandas as pd
 import streamlit as st
 from src.pdf_generator import generate_candidate_pdf
 from src.bullet_generator import generate_resume_bullets
-
+from src.interview_generator import generate_interview_questions
 
 # ============================================================
 # PROJECT PATH SETUP
