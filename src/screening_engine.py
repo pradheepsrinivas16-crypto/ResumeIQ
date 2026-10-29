@@ -2,7 +2,6 @@ import os
 import sys
 import re
 
-# Add project and src directories to sys.path safely
 CURRENT_DIR = os.path.dirname(os.path.abspath(__file__))
 PROJECT_ROOT = os.path.abspath(os.path.join(CURRENT_DIR, ".."))
 for p in [CURRENT_DIR, PROJECT_ROOT]:
@@ -36,7 +35,7 @@ except ImportError:
 
 
 # ============================================================
-# SKILL SCORE
+# SKILL SCORE (SINGLE SOURCE OF TRUTH WEIGHTS)
 # ============================================================
 
 def calculate_skill_score(
@@ -59,7 +58,6 @@ def calculate_skill_score(
     }
 
     total_score = 0.0
-
     for skill in required_skills:
         evidence = skill_evidence_levels.get(skill, {})
         status = str(evidence.get("status", "missing")).strip().lower()
@@ -93,7 +91,7 @@ def calculate_final_score(
 # ============================================================
 
 RESPONSIBILITY_PATTERNS = [
-        {
+    {
         "name": "dashboard development",
         "patterns": [
             "interactive dashboards",
@@ -168,6 +166,7 @@ RESPONSIBILITY_PATTERNS = [
             "responsive web application",
             "responsive web development",
             "responsive design",
+            "responsive e-commerce",
         ],
         "related_skills": [
             "html",
@@ -216,11 +215,13 @@ RESPONSIBILITY_PATTERNS = [
             "restful apis",
             "restful api",
             "api development",
+            "integrate backend rest apis",
         ],
         "related_skills": [
-            "java",
-            "spring boot",
+            "rest api",
             "node.js",
+            "fastapi",
+            "flask",
         ],
     },
     {
@@ -234,6 +235,9 @@ RESPONSIBILITY_PATTERNS = [
         ],
         "related_skills": [
             "mysql",
+            "postgresql",
+            "sql",
+            "database",
         ],
     },
     {
@@ -245,6 +249,8 @@ RESPONSIBILITY_PATTERNS = [
         ],
         "related_skills": [
             "mysql",
+            "sql",
+            "database",
         ],
     },
     {
@@ -258,10 +264,8 @@ RESPONSIBILITY_PATTERNS = [
         ],
         "related_skills": [
             "react",
-            "java",
-            "spring boot",
-            "rest api",
             "javascript",
+            "rest api",
         ],
     },
     {
@@ -305,6 +309,7 @@ RESPONSIBILITY_PATTERNS = [
             "git/github",
             "version control",
             "collaborative development",
+            "git workflows",
         ],
         "related_skills": [
             "git",
@@ -329,24 +334,18 @@ def extract_job_responsibilities(job_description):
     in_responsibilities = False
 
     section_stops = {
-        "required skills",
-        "required skill",
-        "preferred skills",
-        "preferred skill",
-        "qualifications",
-        "experience",
-        "education",
-        "requirements",
-        "nice to have",
+        "required skills", "required skill", "preferred skills", "preferred skill",
+        "qualifications", "experience", "education", "requirements", "nice to have",
     }
 
-    for line in text.splitlines():
+    lines = text.splitlines()
+    for line in lines:
         clean = line.strip().lstrip("•-* \t")
         if not clean:
             continue
 
         heading = clean.rstrip(":").strip().lower()
-        if heading in {"responsibilities", "responsibility", "job responsibilities"}:
+        if heading in {"responsibilities", "responsibility", "job responsibilities", "what you'll do", "what you will do"}:
             in_responsibilities = True
             continue
 
@@ -357,7 +356,15 @@ def extract_job_responsibilities(job_description):
         if in_responsibilities:
             responsibilities.append(clean)
 
-    return responsibilities
+    # Paragraph JD fallback: extract lines starting with common engineering action verbs
+    if not responsibilities:
+        action_verb_pattern = r"^(Build|Develop|Design|Implement|Manage|Lead|Collaborate|Create|Maintain|Query|Integrate|Optimize|Drive|Architect|Analyze)\b"
+        for line in lines:
+            clean = line.strip().lstrip("•-* \t")
+            if re.search(action_verb_pattern, clean, flags=re.I) and len(clean) > 20:
+                responsibilities.append(clean)
+
+    return responsibilities[:8]
 
 
 def find_responsibility_rule(responsibility):
@@ -400,29 +407,13 @@ def _build_substantive_resume_text(resume_text):
     in_skills = False
 
     skill_headings = {
-        "skills",
-        "technical skills",
-        "technical skills & tools",
-        "skills & tools",
-        "core skills",
+        "skills", "technical skills", "technical skills & tools", "skills & tools", "core skills",
     }
 
     section_headings = {
-        "education",
-        "experience",
-        "work experience",
-        "internships",
-        "projects",
-        "project",
-        "certifications",
-        "certification",
-        "achievements",
-        "extracurricular",
-        "profile",
-        "summary",
-        "objective",
-        "languages",
-        "hobbies",
+        "education", "experience", "work experience", "internships", "projects",
+        "project", "certifications", "certification", "achievements", "extracurricular",
+        "profile", "summary", "objective", "languages", "hobbies",
     }
 
     for raw_line in lines:
@@ -438,10 +429,7 @@ def _build_substantive_resume_text(resume_text):
         if in_skills and heading in section_headings:
             in_skills = False
 
-        if in_skills:
-            continue
-
-        if re.search(r"https?://|www\.|@", line, flags=re.I):
+        if in_skills or re.search(r"https?://|www\.|@", line, flags=re.I):
             continue
 
         output.append(line)
@@ -450,7 +438,6 @@ def _build_substantive_resume_text(resume_text):
 
 
 def analyze_job_responsibilities(resume_text, job_description):
-    resume_sections = extract_resume_sections(resume_text)
     responsibilities = extract_job_responsibilities(job_description)
     evidence_text = _build_substantive_resume_text(resume_text)
     normalized_resume = normalize_text(evidence_text)
@@ -476,64 +463,33 @@ def analyze_job_responsibilities(resume_text, job_description):
 
         direct_patterns = []
         if rule["name"] == "responsive web development":
-            direct_patterns = ["responsive", "responsive web", "responsive e-commerce", "responsive ecommerce"]
+            direct_patterns = ["responsive web", "responsive e-commerce", "responsive ecommerce", "responsive web applications"]
         elif rule["name"] == "react frontend development":
-            direct_patterns = ["react js", "reactjs", "react application", "react frontend", "react project", "react applications"]
+            direct_patterns = ["react js", "reactjs", "react application", "react frontend", "react project"]
         elif rule["name"] == "backend development":
-            direct_patterns = ["backend development", "backend services", "backend application", "server-side development", "server side development"]
+            direct_patterns = ["backend development", "backend services", "backend application", "server-side development"]
         elif rule["name"] == "rest api development":
             direct_patterns = ["rest api", "rest apis", "restful api", "restful apis", "api development", "api integration"]
         elif rule["name"] == "database development":
-            direct_patterns = ["database-driven", "database driven", "database management", "database application", "relational database"]
+            direct_patterns = ["database-driven", "database driven", "database management", "relational database"]
         elif rule["name"] == "crud operations":
-            direct_patterns = ["crud operations", "crud operation", "crud", "create read update delete"]
+            direct_patterns = ["crud operations", "crud operation", "create read update delete"]
         elif rule["name"] == "frontend backend integration":
-            direct_patterns = ["frontend-backend", "frontend backend", "frontend with backend", "integrate frontend", "backend integration", "api integration"]
+            direct_patterns = ["frontend-backend", "frontend backend", "frontend with backend", "integrate frontend"]
         elif rule["name"] == "testing and debugging":
-            direct_patterns = ["debugging", "debug", "testing web applications", "test web applications", "test and maintain", "tested"]
+            direct_patterns = ["debugging", "debug", "testing web applications", "test and maintain"]
         elif rule["name"] == "version control":
-            direct_patterns = ["git", "github", "version control"]
+            direct_patterns = ["git", "github", "version control", "git workflows"]
         elif rule["name"] == "scalable application development":
-            direct_patterns = ["scalable application", "scalable applications", "scalable web application", "scalable web applications", "scalable system", "scalable systems", "highly scalable", "scalability"]
+            direct_patterns = ["scalable application", "scalable web application", "scalable system", "scalability"]
         elif rule["name"] == "dashboard development":
-            direct_patterns = [
-                "dashboard",
-                "dashboards",
-                "power bi dashboards",
-                "interactive dashboards",
-                "reports",
-            ]
-
+            direct_patterns = ["dashboard", "dashboards", "power bi dashboards", "interactive dashboards", "reports"]
         elif rule["name"] == "sql data querying":
-            direct_patterns = [
-                "sql",
-                "datasets using python and sql",
-                "query",
-                "relational databases",
-                "extract",
-            ]
-
+            direct_patterns = ["sql", "datasets using python and sql", "query", "relational databases", "extract"]
         elif rule["name"] == "exploratory data analysis":
-            direct_patterns = [
-                "exploratory data analysis",
-                "eda",
-                "data cleaning",
-                "preprocessing",
-                "statistical",
-            ]
-
+            direct_patterns = ["exploratory data analysis", "eda", "data cleaning", "preprocessing", "statistical"]
         elif rule["name"] == "business insights and kpis":
-            direct_patterns = [
-                "kpis",
-                "kpi",
-                "data-driven",
-                "business metrics",
-                "insights",
-                "key performance indicators",
-            ]    
-
-        direct_evidence = []
-        related_evidence = []
+            direct_patterns = ["kpis", "kpi", "data-driven", "business metrics", "insights", "key performance indicators"]
 
         raw_direct = []
         for pattern in direct_patterns:
@@ -541,18 +497,18 @@ def analyze_job_responsibilities(resume_text, job_description):
             if normalized_pattern and normalized_pattern in normalized_resume:
                 raw_direct.append(pattern)
 
-        # Drop substrings so we don't get "responsive, responsive e-commerce"
+        # Deduplicate substrings
         unique_direct = []
-        # Sort by length descending so longer phrases take precedence
         for pat in sorted(raw_direct, key=len, reverse=True):
             if not any(pat in existing for existing in unique_direct):
                 unique_direct.append(pat)
 
-        for pat in unique_direct:
-            direct_evidence.append({
-                "evidence": pat,
-                "source": "experience/project/education"
-            })
+        direct_evidence = [{
+            "evidence": pat,
+            "source": "experience/project/education"
+        } for pat in unique_direct]
+
+        related_evidence = []
         for related_skill in rule["related_skills"]:
             if related_skill not in resume_skills:
                 continue
@@ -569,7 +525,7 @@ def analyze_job_responsibilities(resume_text, job_description):
 
         if direct_evidence:
             status = "strong"
-            reason = "The resume contains direct evidence in experience, projects, or education that supports this responsibility."
+            reason = "The resume contains direct evidence in experience or projects supporting this responsibility."
         elif related_evidence:
             status = "related"
             reason = "The resume contains related skills, but does not explicitly demonstrate the full responsibility."
@@ -609,13 +565,16 @@ def screen_resume(resume_text, job_description):
     required_skills = skill_result["required_skills"]
     skill_score_available = bool(required_skills)
 
+    # Single Source of Truth evidence levels
+    ssot_evidence_levels = skill_result.get(
+        "required_skill_evidence_levels",
+        skill_result.get("skill_evidence_levels", {})
+    )
+
     skill_score = calculate_skill_score(
         skill_result["matched_skills"],
         required_skills,
-        skill_result.get(
-            "required_skill_evidence_levels",
-            skill_result.get("skill_evidence_levels", {})
-        )
+        ssot_evidence_levels
     )
 
     final_score = calculate_final_score(
@@ -634,10 +593,7 @@ def screen_resume(resume_text, job_description):
         semantic_score,
         skill_score,
         required_skills,
-        skill_evidence_levels=skill_result.get(
-            "required_skill_evidence_levels",
-            skill_result.get("skill_evidence_levels", {})
-        )
+        skill_evidence_levels=ssot_evidence_levels
     )
 
     capability_results = analyze_capabilities(skill_result["resume_skills"])
@@ -657,7 +613,7 @@ def screen_resume(resume_text, job_description):
         "missing_skills": skill_result["missing_skills"],
         "skill_evidence": skill_result.get("skill_evidence", {}),
         "skill_evidence_levels": skill_result.get("skill_evidence_levels", {}),
-        "required_skill_evidence_levels": skill_result.get("required_skill_evidence_levels", {}),
+        "required_skill_evidence_levels": ssot_evidence_levels,
         "preferred_skills": skill_result.get("preferred_skills", []),
         "preferred_matched_skills": skill_result.get("preferred_matched_skills", []),
         "preferred_related_skills": skill_result.get("preferred_related_skills", []),
