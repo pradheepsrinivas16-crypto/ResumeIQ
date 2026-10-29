@@ -410,9 +410,22 @@ def analyze_job_relevant_capabilities(resume_skills, job_skills):
                 matched.append(s)
             elif s in {"git", "version control"} and any(g in resume_skills for g in ["git", "github", "gitlab", "version control"]):
                 matched.append(s)
+            # Credit valid industry substitutes within capability view
+            elif s == "adobe xd" and "figma" in resume_skills:
+                matched.append("adobe xd (Sub: Figma)")
+            elif s == "power bi" and "tableau" in resume_skills:
+                matched.append("power bi (Sub: Tableau)")
+            elif s == "mysql" and "postgresql" in resume_skills:
+                matched.append("mysql (Sub: PostgreSQL)")
 
         matched = sorted(list(set(matched)))
-        missing = sorted(list(set(relevant_job_skills) - set(matched)))
+        
+        # Calculate true missing excluding any substituted skills
+        missing = []
+        for s in relevant_job_skills:
+            if not any(s == m or m.startswith(f"{s} (Sub:") for m in matched):
+                missing.append(s)
+        missing = sorted(list(set(missing)))
 
         coverage = (len(matched) / len(relevant_job_skills) * 100) if relevant_job_skills else 0.0
 

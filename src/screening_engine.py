@@ -92,6 +92,24 @@ def calculate_final_score(
 
 RESPONSIBILITY_PATTERNS = [
     {
+        "name": "ui ux design collaboration",
+        "patterns": [
+            "collaborate with designers",
+            "translate wireframes",
+            "wireframes into intuitive user experiences",
+            "intuitive user experiences",
+            "design systems",
+            "user interfaces",
+        ],
+        "related_skills": [
+            "ui/ux",
+            "figma",
+            "adobe xd",
+            "css",
+            "html",
+        ],
+    },
+    {
         "name": "dashboard development",
         "patterns": [
             "interactive dashboards",
@@ -371,6 +389,7 @@ def find_responsibility_rule(responsibility):
     normalized = normalize_text(responsibility)
     priority = [
         "dashboard development",
+        "ui ux design collaboration",
         "sql data querying",
         "exploratory data analysis",
         "business insights and kpis",

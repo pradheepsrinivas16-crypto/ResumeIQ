@@ -1,11 +1,48 @@
 import re
 
 # ============================================================
+# CANONICAL ACRONYM & DISPLAY FORMATTER
+# ============================================================
+
+DISPLAY_SKILL_NAMES = {
+    "ui/ux": "UI/UX",
+    "rest api": "REST API",
+    "html": "HTML",
+    "css": "CSS",
+    "javascript": "JavaScript",
+    "typescript": "TypeScript",
+    "sql": "SQL",
+    "mysql": "MySQL",
+    "postgresql": "PostgreSQL",
+    "aws": "AWS",
+    "gcp": "GCP",
+    "ci/cd": "CI/CD",
+    "power bi": "Power BI",
+    "api": "API",
+    "kpi": "KPI",
+    "eda": "EDA",
+    "nlp": "NLP",
+    "mlops": "MLOps",
+    "gd&t": "GD&T",
+    "cad": "CAD",
+    "seo": "SEO",
+    "sem": "SEM",
+    "hris": "HRIS"
+}
+
+def format_skill_display(name):
+    if not name:
+        return ""
+    norm = str(name).strip().lower()
+    if norm in DISPLAY_SKILL_NAMES:
+        return DISPLAY_SKILL_NAMES[norm]
+    return str(name).strip().title()
+
+# ============================================================
 # PROFESSIONAL SKILL TAXONOMY
 # ============================================================
 
 SKILL_ALIASES = {
-    # PROGRAMMING LANGUAGES
     "python": ["python", "python programming", "python 3"],
     "java": ["java", "java programming", "core java"],
     "c": ["c programming", "c language"],
@@ -13,8 +50,6 @@ SKILL_ALIASES = {
     "c#": ["c#", "c sharp"],
     "javascript": ["javascript", "java script", "js"],
     "typescript": ["typescript", "type script", "ts"],
-
-    # WEB DEVELOPMENT
     "html": ["html", "html5", "hypertext markup language"],
     "css": ["css", "css3", "cascading style sheets"],
     "react": ["react", "react.js", "reactjs"],
@@ -30,8 +65,6 @@ SKILL_ALIASES = {
         "responsive web applications", "responsive web", "responsive design",
         "responsive e-commerce", "responsive ecommerce", "responsive"
     ],
-
-    # DESIGN & DEVELOPMENT TOOLS
     "figma": ["figma"],
     "adobe xd": ["adobe xd", "adobe experience design"],
     "canva": ["canva"],
@@ -40,16 +73,12 @@ SKILL_ALIASES = {
     "vs code": ["vs code", "visual studio code", "vscode"],
     "intellij idea": ["intellij idea", "intellij"],
     "eclipse": ["eclipse ide", "eclipse"],
-
-    # DATABASES
     "sql": ["sql", "structured query language"],
     "mysql": ["mysql", "my sql"],
     "postgresql": ["postgresql", "postgres", "postgre sql"],
     "mongodb": ["mongodb", "mongo db", "mongo"],
     "redis": ["redis"],
     "database": ["database", "databases", "database management"],
-
-    # DATA SCIENCE
     "pandas": ["pandas"],
     "numpy": ["numpy"],
     "matplotlib": ["matplotlib"],
@@ -67,52 +96,35 @@ SKILL_ALIASES = {
     ],
     "data cleaning": ["data cleaning", "data cleansing", "data preprocessing", "data pre-processing"],
     "exploratory data analysis": ["exploratory data analysis", "exploratory analysis", "eda"],
-    "statistical analysis": [
-        "statistical analysis", "statistics", "statistical modelling", "statistical modeling",
-        "statistical models", "statistical"
-    ],
+    "statistical analysis": ["statistical analysis", "statistics", "statistical modelling", "statistical modeling", "statistical models", "statistical"],
     "predictive modeling": ["predictive modeling", "predictive modelling", "predictive analytics"],
-
-    # MACHINE LEARNING ENGINEERING
     "model deployment": ["model deployment", "model deployments", "ml model deployment", "machine learning model deployment", "deploying models", "deployment of models"],
     "mlops": ["mlops", "ml ops", "machine learning operations", "machine-learning operations"],
     "model serving": ["model serving", "ml model serving", "machine learning model serving"],
-
-    # CLOUD
     "cloud computing": ["cloud computing", "cloud", "cloud technology", "cloud technologies"],
     "aws": ["aws", "amazon web services"],
     "azure": ["azure", "microsoft azure"],
     "google cloud": ["google cloud", "google cloud platform", "gcp"],
-
-    # DEVOPS
     "docker": ["docker", "docker containers", "containerization", "containerisation"],
     "kubernetes": ["kubernetes", "k8s"],
     "ci/cd": ["ci/cd", "ci cd", "continuous integration", "continuous delivery", "continuous deployment"],
     "jenkins": ["jenkins"],
     "github actions": ["github actions", "github action"],
     "linux": ["linux", "ubuntu"],
-
-    # VERSION CONTROL
-    "git": ["git", "git version control", "version control", "git workflows", "git workflow", "github workflows", "collaborative development"],
+    "git": ["git", "git version control", "version control", "git workflows", "git workflow", "github", "gitlab", "github workflows", "collaborative development"],
     "github": ["github", "git hub"],
     "gitlab": ["gitlab", "git lab"],
-
-    # BUSINESS INTELLIGENCE
     "excel": ["excel", "microsoft excel", "ms excel"],
     "power bi": ["power bi", "powerbi", "microsoft power bi", "power-bi"],
     "tableau": ["tableau"],
     "dashboard": ["dashboard", "dashboards", "dashboard development", "dashboarding", "bi dashboard", "bi dashboards"],
     "kpi": ["kpi", "kpis", "key performance indicator", "key performance indicators", "key metrics", "business metrics", "player metrics"],
-
-    # OTHER TECH
     "tensorflow": ["tensorflow"],
     "pytorch": ["pytorch", "torch"],
     "opencv": ["opencv", "open cv"],
     "graphql": ["graphql", "graph ql"],
     "spark": ["spark", "apache spark", "pyspark"],
     "hadoop": ["hadoop", "apache hadoop"],
-
-    # MECHANICAL ENGINEERING
     "mechanical engineering": ["mechanical engineering", "mechanical engineer"],
     "autocad": ["autocad", "auto cad"],
     "solidworks": ["solidworks", "solid works"],
@@ -123,31 +135,21 @@ SKILL_ALIASES = {
     "manufacturing": ["manufacturing", "manufacturing processes", "manufacturing process"],
     "engineering drawings": ["engineering drawings", "engineering drawing", "technical drawings", "technical drawing"],
     "mechanical design": ["mechanical design", "mechanical component design", "component design"],
-
-    # FINANCE
     "financial analysis": ["financial analysis", "financial analyst"],
     "financial modeling": ["financial modeling", "financial modelling", "financial model"],
     "accounting": ["accounting", "accountancy"],
     "financial reporting": ["financial reporting", "financial reports"],
-
-    # MARKETING
     "digital marketing": ["digital marketing", "online marketing"],
     "seo": ["seo", "search engine optimization", "search engine optimisation"],
     "sem": ["sem", "search engine marketing"],
     "google analytics": ["google analytics", "ga4"],
     "social media marketing": ["social media marketing", "social media management"],
-
-    # HUMAN RESOURCES
     "recruitment": ["recruitment", "recruiting", "recruiter"],
     "talent acquisition": ["talent acquisition", "talent management"],
     "payroll": ["payroll", "payroll management"],
     "employee relations": ["employee relations"],
     "hris": ["hris", "human resources information system"],
 }
-
-# ============================================================
-# RELATED SKILL RELATIONSHIPS
-# ============================================================
 
 RELATED_SKILLS = {
     "machine learning": ["deep learning", "scikit-learn", "pytorch", "tensorflow", "predictive modeling"],
@@ -160,10 +162,6 @@ RELATED_SKILLS = {
     "statistical analysis": ["exploratory data analysis", "data analysis", "python", "numpy", "pandas"],
     "rest api": ["backend development", "fastapi", "flask", "node.js", "spring boot"],
 }
-
-# ============================================================
-# CANONICAL EQUIVALENT TOOLS (EXACT SET MATCHING)
-# ============================================================
 
 EQUIVALENT_TOOL_MAP = {
     "adobe xd": {"figma", "sketch", "invision"},
@@ -188,7 +186,6 @@ EQUIVALENT_TOOL_MAP = {
 def find_equivalent_skill(target_skill, available_skills):
     if not target_skill or not available_skills:
         return None
-
     target_clean = str(target_skill).strip().lower()
     available_set = {str(s).strip().lower() for s in available_skills}
 
@@ -203,10 +200,6 @@ def find_equivalent_skill(target_skill, available_skills):
 
     return None
 
-# ============================================================
-# TEXT NORMALIZATION
-# ============================================================
-
 def normalize_text(text):
     if not text:
         return ""
@@ -214,10 +207,6 @@ def normalize_text(text):
     text = text.replace("–", "-").replace("—", "-")
     text = re.sub(r"\s+", " ", text)
     return text.strip()
-
-# ============================================================
-# RESUME SECTION DETECTION
-# ============================================================
 
 RESUME_SECTION_HEADINGS = {
     "internship": "internship",
@@ -278,12 +267,10 @@ def extract_resume_sections(text):
     }
 
     current_section = "contact"
-
     for line in lines:
         clean = line.strip()
         if not clean:
             continue
-
         heading = re.sub(r"^[\s•\-*#]+", "", clean).strip()
         heading_normalized = heading.rstrip(":").strip().lower()
 
@@ -295,22 +282,58 @@ def extract_resume_sections(text):
 
     return {key: "\n".join(value) for key, value in sections.items()}
 
+def clean_evidence_sentence(sentence):
+    """Sanitize snippet: remove leftover dates, company location tails, and dangling punctuation."""
+    if not sentence:
+        return ""
+    text = str(sentence).strip()
+    # Strip leading 'Present' or dates like 'Present React JS'
+    text = re.sub(r"^(Present|Current|Date:?)\s*", "", text, flags=re.I)
+    text = re.sub(r"\b\d{1,2}[/-]\d{1,2}[/-]\d{2,4}\b", "", text)
+    text = re.sub(r"\b(19|20)\d{2}\s*[-–]\s*(Present|(19|20)\d{2})\b", "", text, flags=re.I)
+    # Strip dangling trailing dashes or colons
+    text = re.sub(r"[\s–—\-:]+$", "", text).strip()
+    text = re.sub(r"^[\s•\-*#–—]+", "", text).strip()
+    text = re.sub(r"\s+", " ", text)
+    return text
+
 def extract_skill_snippet(text, aliases, max_len=160):
     if not text:
         return ""
     raw_units = re.split(r"(?<=[.!?\n])\s+|[\u2022\u25E6\u2023\u25B8\u2013-]\s+", text)
+    
+    # Priority 1: Pick project descriptions (contain keywords like built, designed, developed, e-cart, home page, page, app)
+    action_units = []
+    other_units = []
+
     for unit in raw_units:
-        clean_unit = re.sub(r"\s+", " ", unit).strip()
-        if len(clean_unit) < 15:
+        clean_unit = clean_evidence_sentence(unit)
+        if len(clean_unit) < 12:
             continue
         unit_lower = clean_unit.lower()
+        
+        # Filter out company/employment metadata lines if possible
+        is_company_header = any(term in unit_lower for term in ["technopark", "pvt ltd", "innovative computer", "remote", "internship at", "technologies ltd"])
+        
+        has_alias = False
         for alias in aliases:
             alias_norm = normalize_text(alias)
             pattern = r"(?<![a-zA-Z0-9])" + re.escape(alias_norm) + r"(?![a-zA-Z0-9])"
             if re.search(pattern, unit_lower):
-                if len(clean_unit) > max_len:
-                    return clean_unit[:max_len].rsplit(" ", 1)[0] + "..."
-                return clean_unit
+                has_alias = True
+                break
+        
+        if has_alias:
+            if not is_company_header:
+                action_units.append(clean_unit)
+            else:
+                other_units.append(clean_unit)
+
+    chosen = action_units[0] if action_units else (other_units[0] if other_units else "")
+    if chosen:
+        if len(chosen) > max_len:
+            return chosen[:max_len].rsplit(" ", 1)[0] + "..."
+        return chosen
     return ""
 
 def find_contextual_skill_evidence(resume_text, skill):
@@ -318,9 +341,10 @@ def find_contextual_skill_evidence(resume_text, skill):
     aliases = SKILL_ALIASES.get(skill, [skill])
     evidence = []
 
-    # Priority 1: Direct Section Verification
-    for section_name, section_text in sections.items():
-        if section_name in {"contact", "soft_skills"} or not section_text.strip():
+    # Priority 1: Projects / Experience / Internships
+    for section_name in ["projects", "experience", "internship", "certifications", "education", "skills"]:
+        section_text = sections.get(section_name, "")
+        if not section_text.strip():
             continue
 
         normalized_section = normalize_text(section_text)
@@ -336,29 +360,8 @@ def find_contextual_skill_evidence(resume_text, skill):
                     "strength": SECTION_STRENGTH.get(section_name, "supporting"),
                 })
                 break
-
-    # Priority 2: Full Document Fallback (SEALED: Classified strictly as 'supporting', NOT 'strong')
-    if not evidence:
-        raw_lines = str(resume_text or "").replace("\r", "\n").splitlines()
-        clean_lines = [
-            line for line in raw_lines
-            if not re.search(r"https?://|www\.|@", line, flags=re.I)
-        ]
-        substantive_body = "\n".join(clean_lines)
-        substantive_norm = normalize_text(substantive_body)
-
-        for alias in aliases:
-            alias_norm = normalize_text(alias)
-            pattern = r"(?<![a-zA-Z0-9])" + re.escape(alias_norm) + r"(?![a-zA-Z0-9])"
-            if re.search(pattern, substantive_norm):
-                snippet = extract_skill_snippet(substantive_body, aliases)
-                evidence.append({
-                    "section": "skills",
-                    "evidence": alias,
-                    "snippet": snippet if snippet else f"Mentioned {alias} in document.",
-                    "strength": "supporting",
-                })
-                break
+        if evidence:
+            break
 
     return evidence
 
@@ -385,9 +388,7 @@ def classify_skill_evidence(resume_text, skill):
 
     # 1. Demonstrated in active project/work sections (1.0x)
     if strong_found:
-        substantive_body = "\n".join(
-            v for k, v in sections.items() if k in strong_sections
-        )
+        substantive_body = "\n".join(v for k, v in sections.items() if k in strong_sections)
         snippet = extract_skill_snippet(substantive_body, aliases)
         return {
             "status": "demonstrated",
@@ -425,7 +426,7 @@ def classify_skill_evidence(resume_text, skill):
             "confidence": 0.70,
         }
 
-    # 5. Full document fallback (SEALED: strictly listed 0.40x, never demonstrated)
+    # 5. Full document fallback (strictly listed 0.40x, never demonstrated)
     norm_full = normalize_text(resume_text)
     for alias in aliases:
         alias_norm = normalize_text(alias)
@@ -537,7 +538,7 @@ def compare_skill_group(resume_text, skills, resume_skill_set):
                 "evidence": evidence if evidence else [{
                     "section": "projects",
                     "evidence": skill,
-                    "snippet": f"Demonstrated {skill} in project or experience workflows.",
+                    "snippet": f"Demonstrated {format_skill_display(skill)} in project work.",
                     "strength": "strong"
                 }],
                 "confidence": 1.0
@@ -624,7 +625,7 @@ def compare_skills(resume_text, job_description):
                 req_levels[skill] = {
                     "status": "demonstrated",
                     "sections": ["projects"],
-                    "snippet": snippet_text if snippet_text else f"Demonstrated {skill} in project workflows.",
+                    "snippet": snippet_text if snippet_text else f"Demonstrated {format_skill_display(skill)} in project work.",
                     "confidence": 1.0
                 }
         elif skill in skill_evidence_levels and skill_evidence_levels[skill].get("status") != "missing":
