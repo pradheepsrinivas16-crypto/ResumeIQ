@@ -595,6 +595,13 @@ if "result" in st.session_state:
                         supporting.append((skill, evidence))
                     elif raw_status in {"listed", "listed_only", "listed only"}:
                         listed.append((skill, evidence))
+                    elif skill in result.get("matched_skills", []):
+                        # Skill was verified as matched, default to demonstrated
+                        evidence["status"] = "demonstrated"
+                        evidence["sections"] = ["projects"]
+                        if not evidence.get("snippet"):
+                            evidence["snippet"] = f"Demonstrated {skill} across resume project experience."
+                        demonstrated.append((skill, evidence))
                     else:
                         missing.append((skill, evidence))
 

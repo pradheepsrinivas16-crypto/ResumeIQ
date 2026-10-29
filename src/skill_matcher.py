@@ -225,9 +225,14 @@ SKILL_ALIASES = {
     ],
     "data visualization": [
         "data visualization",
+        "data visualizations",
         "data visualisation",
+        "data visualisations",
+        "visualizations",
         "visualization",
-        "visualisation"
+        "visualisation",
+        "visualising data",
+        "visualizing data"
     ],
     "data cleaning": [
         "data cleaning",
@@ -244,7 +249,9 @@ SKILL_ALIASES = {
         "statistical analysis",
         "statistics",
         "statistical modelling",
-        "statistical modeling"
+        "statistical modeling",
+        "statistical models",
+        "statistical"
     ],
     "predictive modeling": [
         "predictive modeling",
@@ -380,7 +387,10 @@ SKILL_ALIASES = {
         "kpi",
         "kpis",
         "key performance indicator",
-        "key performance indicators"
+        "key performance indicators",
+        "key metrics",
+        "business metrics",
+        "player metrics"
     ],
 
     # --------------------------------------------------------
