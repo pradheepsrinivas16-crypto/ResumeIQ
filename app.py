@@ -355,6 +355,22 @@ if "result" in st.session_state:
         for r in resp_items
     ) or any(g in result.get("resume_skills", []) for g in ["git", "github", "gitlab"])
 
+    # Prepare sanitized result copy for PDF to guarantee zero gap contradictions
+    pdf_result = dict(result)
+    pdf_matched = list(result.get("matched_skills", []))
+    if git_detected and "git" not in pdf_matched:
+        pdf_matched.append("git")
+    pdf_result["matched_skills"] = sorted(list(set(pdf_matched)))
+
+    pdf_missing = []
+    for s in result.get("missing_skills", []):
+        if result.get("skill_evidence", {}).get(s, {}).get("type") == "substitute":
+            continue
+        if s in {"git", "version control"} and git_detected:
+            continue
+        pdf_missing.append(s)
+    pdf_result["missing_skills"] = sorted(list(set(pdf_missing)))
+
     top_c1, top_c2 = st.columns([3, 1])
     with top_c1:
         render_html(
@@ -371,7 +387,7 @@ if "result" in st.session_state:
     with top_c2:
         career_recs_pdf = get_alternative_pathways(result.get("resume_skills", []))
         candidate_label = st.session_state.get("resume_name", "Candidate")
-        pdf_bytes = generate_candidate_pdf(candidate_label, result, career_recs_pdf)
+        pdf_bytes = generate_candidate_pdf(candidate_label, pdf_result, career_recs_pdf)
         st.download_button(
             label="📄 Download Evaluation PDF",
             data=pdf_bytes,
@@ -379,7 +395,6 @@ if "result" in st.session_state:
             mime="application/pdf",
             use_container_width=True
         )
-
     st.write("")
 
     tab_summary, tab_skills, tab_resp_caps, tab_career = st.tabs([
