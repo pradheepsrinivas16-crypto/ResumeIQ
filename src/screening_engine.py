@@ -490,6 +490,41 @@ def analyze_job_responsibilities(resume_text, job_description):
             direct_patterns = ["git", "github", "version control"]
         elif rule["name"] == "scalable application development":
             direct_patterns = ["scalable application", "scalable applications", "scalable web application", "scalable web applications", "scalable system", "scalable systems", "highly scalable", "scalability"]
+        elif rule["name"] == "dashboard development":
+            direct_patterns = [
+                "dashboard",
+                "dashboards",
+                "power bi dashboards",
+                "interactive dashboards",
+                "reports",
+            ]
+
+        elif rule["name"] == "sql data querying":
+            direct_patterns = [
+                "sql",
+                "datasets using python and sql",
+                "query",
+                "relational databases",
+                "extract",
+            ]
+
+        elif rule["name"] == "exploratory data analysis":
+            direct_patterns = [
+                "exploratory data analysis",
+                "eda",
+                "data cleaning",
+                "preprocessing",
+                "statistical",
+            ]
+
+        elif rule["name"] == "business insights and kpis":
+            direct_patterns = [
+                "kpis",
+                "kpi",
+                "data-driven",
+                "business metrics",
+                "insights",
+            ]    
 
         direct_evidence = []
         related_evidence = []
