@@ -145,11 +145,14 @@ RESPONSIBILITY_PATTERNS = [
     {
         "name": "business insights and kpis",
         "patterns": [
+            "present data-driven insights",
             "data-driven insights",
             "kpi metrics",
             "business metrics",
-            "present data-driven",
+            "business stakeholders",
             "kpis",
+            "kpi",
+            "insights",
         ],
         "related_skills": [
             "kpi",
@@ -157,6 +160,8 @@ RESPONSIBILITY_PATTERNS = [
             "power bi",
             "excel",
         ],
+    },
+    {
         "name": "responsive web development",
         "patterns": [
             "responsive web applications",
@@ -524,6 +529,7 @@ def analyze_job_responsibilities(resume_text, job_description):
                 "data-driven",
                 "business metrics",
                 "insights",
+                "key performance indicators",
             ]    
 
         direct_evidence = []
