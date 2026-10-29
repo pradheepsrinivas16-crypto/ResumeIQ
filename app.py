@@ -766,8 +766,14 @@ if "result" in st.session_state:
 
         st.write("")
         st.markdown("### 🎯 High-Level Capability Analysis")
+        # Harmonize resume skills with verified git evidence
+        passed_resume_skills = list(result.get("resume_skills", []))
+        if git_detected and "git" not in passed_resume_skills:
+            passed_resume_skills.append("git")
+            passed_resume_skills.append("version control")
+
         job_capabilities = analyze_job_relevant_capabilities(
-            result.get("resume_skills", []),
+            passed_resume_skills,
             result.get("required_skills", [])
         )
         if job_capabilities:
