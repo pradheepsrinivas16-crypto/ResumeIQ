@@ -607,12 +607,19 @@ if "result" in st.session_state:
         with skill_col2:
             st.markdown("### ❌ Unmatched Skill Gaps")
             real_missing = []
-            for s in result.get("missing_skills", []):
+            for s in result.get("required_skills", []):
+                # Don't show substitute tools as gaps
                 if result.get("skill_evidence", {}).get(s, {}).get("type") == "substitute":
                     continue
                 if s in {"git", "version control"} and git_detected:
                     continue
-                real_missing.append(s)
+                ev = get_normalized_skill_evidence(s, result.get("skill_evidence_levels", {}), result.get("required_skill_evidence_levels", {}))
+                st_code = str(ev.get("status", "missing")).strip().lower()
+                if st_code == "missing" or s in result.get("missing_skills", []):
+                    if s not in matched_display:
+                        real_missing.append(s)
+
+            real_missing = sorted(list(set(real_missing)))
 
             if real_missing:
                 chips = "".join(f'<span class="chip chip-missing">! {skill}</span>' for skill in real_missing)
