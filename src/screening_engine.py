@@ -93,7 +93,70 @@ def calculate_final_score(
 # ============================================================
 
 RESPONSIBILITY_PATTERNS = [
+        {
+        "name": "dashboard development",
+        "patterns": [
+            "interactive dashboards",
+            "dashboards and reports",
+            "dashboards to track",
+            "dashboard",
+            "power bi dashboards",
+        ],
+        "related_skills": [
+            "power bi",
+            "tableau",
+            "excel",
+            "dashboard",
+            "data visualization",
+        ],
+    },
     {
+        "name": "sql data querying",
+        "patterns": [
+            "query relational databases",
+            "relational databases using sql",
+            "using sql to extract",
+            "sql to extract",
+            "querying",
+            "extract and transform",
+        ],
+        "related_skills": [
+            "sql",
+            "mysql",
+            "database",
+        ],
+    },
+    {
+        "name": "exploratory data analysis",
+        "patterns": [
+            "exploratory data analysis",
+            "statistical modeling",
+            "data cleaning",
+            "preprocessing",
+            "eda",
+        ],
+        "related_skills": [
+            "python",
+            "pandas",
+            "numpy",
+            "data analysis",
+        ],
+    },
+    {
+        "name": "business insights and kpis",
+        "patterns": [
+            "data-driven insights",
+            "kpi metrics",
+            "business metrics",
+            "present data-driven",
+            "kpis",
+        ],
+        "related_skills": [
+            "kpi",
+            "data analysis",
+            "power bi",
+            "excel",
+        ],
         "name": "responsive web development",
         "patterns": [
             "responsive web applications",
@@ -295,6 +358,10 @@ def extract_job_responsibilities(job_description):
 def find_responsibility_rule(responsibility):
     normalized = normalize_text(responsibility)
     priority = [
+        "dashboard development",
+        "sql data querying",
+        "exploratory data analysis",
+        "business insights and kpis",
         "crud operations",
         "rest api development",
         "version control",
