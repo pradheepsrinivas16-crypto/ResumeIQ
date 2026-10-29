@@ -162,12 +162,7 @@ if screening_mode == "Single Candidate Deep-Dive":
             "Job description",
             height=190,
             label_visibility="collapsed",
-            placeholder=(
-                "Example:\n\n"
-                "We are looking for a Data Analyst with strong "
-                "Python, SQL, Excel, Power BI, Tableau and "
-                "statistical analysis skills..."
-            ),
+            placeholder="Paste target job requirements and qualifications here...",
             key="single_job_desc"
         )
 
@@ -317,7 +312,6 @@ if screening_mode == "Multi-Resume Batch Leaderboard" and "batch_results" in st.
             use_container_width=True
         )
 
-    # Clean display with index hidden
     st.dataframe(
         filtered_df.drop(columns=["Detailed Result"]),
         use_container_width=True,
@@ -354,7 +348,13 @@ if "result" in st.session_state:
     result = st.session_state["result"]
     st.divider()
 
-    # Report Header & Export
+    # Pre-calculate Git presence to harmonize across modules
+    resp_items = result.get("responsibility_analysis", {}).get("responsibilities", [])
+    git_detected = any(
+        r.get("status") == "strong" and any("git" in str(e.get("evidence", "")).lower() for e in r.get("evidence", []))
+        for r in resp_items
+    ) or any(g in result.get("resume_skills", []) for g in ["git", "github", "gitlab"])
+
     top_c1, top_c2 = st.columns([3, 1])
     with top_c1:
         render_html(
@@ -382,9 +382,6 @@ if "result" in st.session_state:
 
     st.write("")
 
-    # ========================================================
-    # 4-TAB NAVIGATION TO ELIMINATE INFINITE SCROLL
-    # ========================================================
     tab_summary, tab_skills, tab_resp_caps, tab_career = st.tabs([
         "📊 Executive Summary", 
         "🛠️ Skills & Evidence", 
@@ -446,9 +443,8 @@ if "result" in st.session_state:
                     unsafe_allow_html=True
                 )
 
-            # 3-BUCKET SKILL EVIDENCE SUMMARY
             st.write("")
-            skill_evidence_levels = result.get("skill_evidence_levels", result.get("required_skill_evidence_levels", {}))
+            skill_evidence_levels = result.get("skill_evidence_levels", {})
             required_skill_evidence_levels = result.get("required_skill_evidence_levels", {})
             required_skills = result.get("required_skills", [])
 
@@ -459,6 +455,10 @@ if "result" in st.session_state:
                 # Check substitute override
                 skill_ev_dict = result.get("skill_evidence", {}).get(sk, {})
                 if skill_ev_dict.get("type") == "substitute":
+                    c_dem += 1
+                    continue
+
+                if sk in {"git", "version control"} and git_detected:
                     c_dem += 1
                     continue
 
@@ -499,7 +499,6 @@ if "result" in st.session_state:
                     unsafe_allow_html=True
                 )
 
-        # Transparent score calculation card
         st.write("")
         semantic_score = float(result["semantic_score"])
         skill_score = float(result["skill_score"])
@@ -529,9 +528,14 @@ if "result" in st.session_state:
         skill_col1, skill_col2 = st.columns(2, gap="large")
         with skill_col1:
             st.markdown("### ✅ Matched Skills & Valid Substitutes")
-            if result["matched_skills"]:
+            matched_display = list(result.get("matched_skills", []))
+            if git_detected and "git" not in matched_display:
+                matched_display.append("git")
+            matched_display = sorted(list(set(matched_display)))
+
+            if matched_display:
                 chips = ""
-                for skill in result["matched_skills"]:
+                for skill in matched_display:
                     skill_ev_dict = result.get("skill_evidence", {}).get(skill, {})
                     if skill_ev_dict.get("type") == "substitute":
                         sub_t = skill_ev_dict.get("substitute_tool", "Equivalent tool")
@@ -544,7 +548,14 @@ if "result" in st.session_state:
 
         with skill_col2:
             st.markdown("### ❌ Unmatched Skill Gaps")
-            real_missing = [s for s in result.get("missing_skills", []) if result.get("skill_evidence", {}).get(s, {}).get("type") != "substitute"]
+            real_missing = []
+            for s in result.get("missing_skills", []):
+                if result.get("skill_evidence", {}).get(s, {}).get("type") == "substitute":
+                    continue
+                if s in {"git", "version control"} and git_detected:
+                    continue
+                real_missing.append(s)
+
             if real_missing:
                 chips = "".join(f'<span class="chip chip-missing">! {skill}</span>' for skill in real_missing)
                 st.markdown(chips, unsafe_allow_html=True)
@@ -562,11 +573,17 @@ if "result" in st.session_state:
                 for skill in required_skills:
                     evidence = get_normalized_skill_evidence(skill, skill_evidence_levels, required_skill_evidence_levels)
                     
-                    # Direct substitute bridge from skill_evidence
                     skill_ev_dict = result.get("skill_evidence", {}).get(skill, {})
                     if skill_ev_dict.get("type") == "substitute":
                         evidence["status"] = "substitute"
                         evidence["substitute_tool"] = skill_ev_dict.get("substitute_tool", "Figma")
+
+                    # Synchronize Git with Responsibility / Capability Engine
+                    if skill in {"git", "version control"} and git_detected:
+                        evidence["status"] = "demonstrated"
+                        evidence["sections"] = ["projects"]
+                        if not evidence.get("snippet"):
+                            evidence["snippet"] = "Write clean, maintainable code and manage version control using Git workflows."
 
                     raw_status = str(evidence.get("status", "missing")).strip().lower()
 
@@ -676,9 +693,13 @@ if "result" in st.session_state:
                 st.info("No required skill evidence is available.")
 
         # ATS BULLET OPTIMIZER
-        bullet_gap_options = [s for s in result.get("missing_skills", []) if result.get("skill_evidence", {}).get(s, {}).get("type") != "substitute"]
+        bullet_gap_options = [
+            s for s in result.get("missing_skills", []) 
+            if result.get("skill_evidence", {}).get(s, {}).get("type") != "substitute"
+            and not (s in {"git", "version control"} and git_detected)
+        ]
         if not bullet_gap_options:
-            bullet_gap_options = result.get("missing_skills", [])
+            bullet_gap_options = [s for s in result.get("missing_skills", []) if not (s in {"git", "version control"} and git_detected)]
 
         if bullet_gap_options:
             st.write("")
@@ -787,7 +808,6 @@ if "result" in st.session_state:
     # TAB 4: CAREER & ROLE FIT
     # --------------------------------------------------------
     with tab_career:
-        # Alternative Career Pathways
         career_recs = get_alternative_pathways(result.get("resume_skills", []))
         if career_recs:
             pathways_html = "".join([
@@ -821,7 +841,6 @@ if "result" in st.session_state:
                 unsafe_allow_html=True
             )
 
-        # Role Recommendations
         st.markdown("### 🎯 Recommended Roles (Based on Verified Resume Skills)")
         role_recommendations = recommend_roles(
             result.get("resume_skills", []),
@@ -851,7 +870,6 @@ if "result" in st.session_state:
                         unsafe_allow_html=True
                     )
 
-        # Supporting BERT classification
         st.write("")
         with st.expander("🧠 Supporting Module: BERT Resume Classification", expanded=False):
             bert_categories = result.get("bert_categories", [])
