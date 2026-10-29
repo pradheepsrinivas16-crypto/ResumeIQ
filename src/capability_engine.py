@@ -1,394 +1,120 @@
 from pathlib import Path
 import sys
 
-# ============================================================
-# PATH SETUP
-# ============================================================
-
 SRC_DIR = Path(__file__).resolve().parent
 PROJECT_DIR = SRC_DIR.parent
 
 if str(SRC_DIR) not in sys.path:
     sys.path.append(str(SRC_DIR))
 
-# ============================================================
-# IMPORTS
-# ============================================================
-
-from .resume_parser import extract_resume_text
-from .skill_matcher import extract_skills
-
-# ============================================================
-# CAPABILITY DEFINITIONS
-# ============================================================
-
 CAPABILITIES = {
-    # --------------------------------------------------------
-    # SOFTWARE / WEB
-    # --------------------------------------------------------
     "frontend development": {
-        "description": (
-            "Ability to build user-facing web interfaces using "
-            "HTML, CSS, JavaScript and modern frontend frameworks."
-        ),
-        "core_skills": {
-            "html",
-            "css",
-            "javascript"
-        },
-        "supporting_skills": {
-            "react",
-            "angular",
-            "vue",
-            "responsive web design",
-            "ui/ux",
-            "typescript"
-        },
+        "description": "Ability to build user-facing web interfaces using HTML, CSS, JavaScript and modern frontend frameworks.",
+        "core_skills": {"html", "css", "javascript"},
+        "supporting_skills": {"react", "angular", "vue", "responsive web design", "ui/ux", "typescript"},
         "minimum_core": 2,
         "minimum_supporting": 1
     },
-
     "backend development": {
-        "description": (
-            "Ability to develop server-side applications, "
-            "backend services and application logic."
-        ),
-        "core_skills": {
-            "spring boot",
-            "node.js"
-        },
-        "supporting_skills": {
-            "rest api",
-            "java",
-            "sql",
-            "mysql",
-            "python"
-        },
+        "description": "Ability to develop server-side applications, backend services and application logic.",
+        "core_skills": {"spring boot", "node.js", "fastapi", "flask", "django", "rest api"},
+        "supporting_skills": {"java", "sql", "mysql", "postgresql", "python"},
         "minimum_core": 1,
-        "minimum_supporting": 0
+        "minimum_supporting": 1
     },
-
     "full stack development": {
-        "description": (
-            "Ability to combine frontend and backend development "
-            "to build complete web applications."
-        ),
-        "core_skills": {
-            "html",
-            "css",
-            "javascript",
-            "spring boot",
-            "node.js"
-        },
-        "supporting_skills": {
-            "react",
-            "angular",
-            "rest api",
-            "java",
-            "mysql",
-            "sql"
-        },
-        "minimum_core": 4,
-        "minimum_supporting": 0
+        "description": "Ability to combine frontend and backend development to build complete web applications.",
+        "core_skills": {"html", "css", "javascript"},
+        "backend_core": {"spring boot", "node.js", "fastapi", "flask", "django", "rest api"},
+        "supporting_skills": {"react", "angular", "java", "mysql", "sql", "postgresql"},
+        "minimum_core": 2,
+        "minimum_supporting": 1
     },
-
     "database development": {
-        "description": (
-            "Ability to work with relational databases and "
-            "database-driven applications."
-        ),
-        "core_skills": {
-            "sql",
-            "mysql"
-        },
-        "supporting_skills": {
-            "crud",
-            "mongodb",
-            "postgresql",
-            "database",
-            "database management"
-        },
+        "description": "Ability to work with relational databases and database-driven applications.",
+        "core_skills": {"sql", "mysql", "postgresql"},
+        "supporting_skills": {"crud", "mongodb", "database", "database management", "redis"},
         "minimum_core": 1,
         "minimum_supporting": 1
     },
-
     "api development": {
-        "description": (
-            "Ability to design or integrate application "
-            "programming interfaces and backend services."
-        ),
-        "core_skills": {
-            "rest api"
-        },
-        "supporting_skills": {
-            "java",
-            "spring boot",
-            "node.js",
-            "javascript"
-        },
+        "description": "Ability to design or integrate application programming interfaces and backend services.",
+        "core_skills": {"rest api", "graphql"},
+        "supporting_skills": {"java", "spring boot", "node.js", "javascript", "fastapi"},
         "minimum_core": 1,
         "minimum_supporting": 1
     },
-
     "ui ux development": {
-        "description": (
-            "Ability to design usable and visually effective "
-            "interfaces using UI/UX principles and design tools."
-        ),
-        "core_skills": {
-            "figma",
-            "ui/ux"
-        },
-        "supporting_skills": {
-            "responsive web design",
-            "html",
-            "css",
-            "javascript",
-            "adobe xd",
-            "canva"
-        },
+        "description": "Ability to design usable and visually effective interfaces using UI/UX principles and design tools.",
+        "core_skills": {"figma", "ui/ux", "adobe xd"},
+        "supporting_skills": {"responsive web design", "html", "css", "javascript", "canva"},
         "minimum_core": 1,
         "minimum_supporting": 1
     },
-
     "cloud development": {
-        "description": (
-            "Ability to work with cloud platforms and cloud-based "
-            "application infrastructure."
-        ),
-        "core_skills": {
-            "aws"
-        },
-        "supporting_skills": {
-            "azure",
-            "gcp",
-            "docker",
-            "kubernetes",
-            "cloud"
-        },
+        "description": "Ability to work with cloud platforms and cloud-based application infrastructure.",
+        "core_skills": {"aws", "azure", "google cloud", "gcp"},
+        "supporting_skills": {"docker", "kubernetes", "cloud", "cloud computing"},
         "minimum_core": 1,
         "minimum_supporting": 1
     },
-
     "version control": {
-        "description": (
-            "Ability to manage source code and collaborate using "
-            "version-control platforms."
-        ),
-        "core_skills": {
-            "git",
-            "github"
-        },
-        "supporting_skills": {
-            "gitlab",
-            "bitbucket",
-            "version control"
-        },
+        "description": "Ability to manage source code and collaborate using version-control platforms.",
+        "core_skills": {"git", "github"},
+        "supporting_skills": {"gitlab", "bitbucket", "version control"},
         "minimum_core": 1,
         "minimum_supporting": 0
     },
-
-    # --------------------------------------------------------
-    # DATA / AI
-    # --------------------------------------------------------
     "data science": {
-        "description": (
-            "Ability to work with data using programming, "
-            "data analysis, statistics and machine learning."
-        ),
-        "core_skills": {
-            "python",
-            "data analysis",
-            "machine learning"
-        },
-        "supporting_skills": {
-            "pandas",
-            "numpy",
-            "scikit-learn",
-            "statistical analysis",
-            "predictive modeling"
-        },
+        "description": "Ability to work with data using programming, data analysis, statistics and machine learning.",
+        "core_skills": {"python", "machine learning", "statistical analysis"},
+        "supporting_skills": {"pandas", "numpy", "scikit-learn", "data analysis", "predictive modeling"},
         "minimum_core": 2,
         "minimum_supporting": 1
     },
-
     "data analytics": {
-        "description": (
-            "Ability to analyze data, identify trends and "
-            "communicate insights using analytical tools."
-        ),
-        "core_skills": {
-            "data analysis",
-            "sql",
-            "data visualization"
-        },
-        "supporting_skills": {
-            "excel",
-            "power bi",
-            "tableau",
-            "dashboard",
-            "statistical analysis",
-            "data cleaning",
-            "exploratory data analysis"
-        },
+        "description": "Ability to analyze data, identify trends and communicate insights using analytical tools.",
+        "core_skills": {"data analysis", "sql", "data visualization"},
+        "supporting_skills": {"excel", "power bi", "tableau", "dashboard", "statistical analysis", "data cleaning", "exploratory data analysis"},
         "minimum_core": 2,
         "minimum_supporting": 1
     },
-
     "machine learning": {
-        "description": (
-            "Ability to develop predictive models using "
-            "machine learning algorithms and data."
-        ),
-        "core_skills": {
-            "machine learning",
-            "python"
-        },
-        "supporting_skills": {
-            "scikit-learn",
-            "pandas",
-            "numpy",
-            "predictive modeling",
-            "data analysis"
-        },
-        "minimum_core": 2,
-        "minimum_supporting": 1
-    },
-
-    "business intelligence": {
-        "description": (
-            "Ability to transform business data into "
-            "dashboards, reports and actionable insights."
-        ),
-        "core_skills": {
-            "power bi",
-            "dashboard"
-        },
-        "supporting_skills": {
-            "sql",
-            "excel",
-            "tableau",
-            "data visualization",
-            "kpi",
-            "data analysis"
-        },
+        "description": "Ability to develop predictive models using machine learning algorithms and data.",
+        "core_skills": {"machine learning", "scikit-learn", "deep learning", "predictive modeling"},
+        "supporting_skills": {"python", "pandas", "numpy", "tensorflow", "pytorch", "data analysis"},
         "minimum_core": 1,
         "minimum_supporting": 2
     },
-
+    "business intelligence": {
+        "description": "Ability to transform business data into dashboards, reports and actionable insights.",
+        "core_skills": {"power bi", "tableau", "dashboard"},
+        "supporting_skills": {"sql", "excel", "data visualization", "kpi", "data analysis"},
+        "minimum_core": 1,
+        "minimum_supporting": 2
+    },
     "data visualization": {
-        "description": (
-            "Ability to communicate information through "
-            "charts, dashboards and visual representations."
-        ),
-        "core_skills": {
-            "data visualization"
-        },
-        "supporting_skills": {
-            "power bi",
-            "tableau",
-            "matplotlib",
-            "seaborn",
-            "dashboard",
-            "excel"
-        },
+        "description": "Ability to communicate information through charts, dashboards and visual representations.",
+        "core_skills": {"data visualization", "power bi", "tableau"},
+        "supporting_skills": {"matplotlib", "seaborn", "dashboard", "excel"},
         "minimum_core": 1,
         "minimum_supporting": 1
     }
 }
 
-# ============================================================
-# NORMALIZATION
-# ============================================================
-
 def normalize_skills(skills):
     if not skills:
         return set()
+    return {str(skill).lower().strip() for skill in skills if str(skill).strip()}
 
-    return {
-        str(skill).lower().strip()
-        for skill in skills
-        if str(skill).strip()
-    }
-
-# ============================================================
-# ANALYZE ONE CAPABILITY
-# ============================================================
-
-def analyze_capability(resume_skills, capability_name):
-    resume_skills = normalize_skills(resume_skills)
-    capability = CAPABILITIES.get(capability_name)
-
-    if capability is None:
-        return {
-            "capability": capability_name,
-            "description": "",
-            "supported": False,
-            "core_matches": [],
-            "supporting_matches": [],
-            "missing_core": [],
-            "missing_supporting": [],
-            "evidence_count": 0
-        }
-
-    core_skills = set(capability["core_skills"])
-    supporting_skills = set(capability["supporting_skills"])
-
-    core_matches = sorted(resume_skills.intersection(core_skills))
-    supporting_matches = sorted(resume_skills.intersection(supporting_skills))
-    missing_core = sorted(core_skills - resume_skills)
-    missing_supporting = sorted(supporting_skills - resume_skills)
-
-    core_requirement_met = len(core_matches) >= capability["minimum_core"]
-    supporting_requirement_met = len(supporting_matches) >= capability["minimum_supporting"]
-
-    supported = core_requirement_met and supporting_requirement_met
-
-    if capability_name == "backend development":
-        supported = supported and bool(resume_skills.intersection({"spring boot", "node.js"}))
-
-    if capability_name == "full stack development":
-        supported = (
-            supported
-            and {"html", "css", "javascript"}.issubset(resume_skills)
-            and bool(resume_skills.intersection({"spring boot", "node.js"}))
-        )
-
-    evidence_count = len(core_matches) + len(supporting_matches)
-
-    return {
-        "capability": capability_name,
-        "description": capability["description"],
-        "supported": supported,
-        "core_matches": core_matches,
-        "supporting_matches": supporting_matches,
-        "missing_core": missing_core,
-        "missing_supporting": missing_supporting,
-        "evidence_count": evidence_count
-    }
-
-# ============================================================
-# ANALYZE ALL CAPABILITIES
-# ============================================================
-
-def analyze_capabilities(resume_skills):
-    results = []
-    for capability_name in CAPABILITIES:
-        results.append(analyze_capability(resume_skills, capability_name))
-    return results
-
-# ============================================================
-# JOB-RELEVANT CAPABILITY ANALYSIS
-# ============================================================
-
-def analyze_job_relevant_capabilities(resume_skills, job_skills):
+def analyze_job_relevant_capabilities(resume_skills, job_skills, skill_evidence_levels=None):
     resume_skills = normalize_skills(resume_skills)
     job_skills = normalize_skills(job_skills)
+    evidence_levels = skill_evidence_levels or {}
 
     if not job_skills:
         return []
 
-    # Harmonize Git/GitHub/Version Control aliases
     if any(g in resume_skills for g in ["git", "github", "gitlab"]):
         resume_skills.add("git")
         resume_skills.add("version control")
@@ -396,45 +122,77 @@ def analyze_job_relevant_capabilities(resume_skills, job_skills):
     results = []
 
     for capability_name, capability in CAPABILITIES.items():
-        core_skills = set(capability["core_skills"])
-        supporting_skills = set(capability["supporting_skills"])
-        capability_skills = core_skills | supporting_skills
+        core_skills = set(capability.get("core_skills", set()))
+        supporting_skills = set(capability.get("supporting_skills", set()))
+        backend_core = set(capability.get("backend_core", set()))
+        capability_skills = core_skills | supporting_skills | backend_core
 
         relevant_job_skills = sorted(job_skills.intersection(capability_skills))
         if not relevant_job_skills:
             continue
 
         matched = []
+        earned_weight = 0.0
+
         for s in relevant_job_skills:
+            is_matched = False
+            sub_label = None
+
             if s in resume_skills:
-                matched.append(s)
+                is_matched = True
             elif s in {"git", "version control"} and any(g in resume_skills for g in ["git", "github", "gitlab", "version control"]):
-                matched.append(s)
-            # Credit valid industry substitutes within capability view
+                is_matched = True
             elif s == "adobe xd" and "figma" in resume_skills:
-                matched.append("adobe xd (Sub: Figma)")
+                is_matched = True
+                sub_label = "Adobe Xd (Sub: Figma)"
             elif s == "power bi" and "tableau" in resume_skills:
-                matched.append("power bi (Sub: Tableau)")
+                is_matched = True
+                sub_label = "Power BI (Sub: Tableau)"
             elif s == "mysql" and "postgresql" in resume_skills:
-                matched.append("mysql (Sub: PostgreSQL)")
+                is_matched = True
+                sub_label = "MySQL (Sub: PostgreSQL)"
+
+            if is_matched:
+                matched.append(sub_label if sub_label else s)
+                status = str(evidence_levels.get(s, {}).get("status", "demonstrated")).strip().lower()
+                if "listed" in status:
+                    earned_weight += 0.40
+                elif "supporting" in status or "substitute" in status:
+                    earned_weight += 0.70
+                else:
+                    earned_weight += 1.00
 
         matched = sorted(list(set(matched)))
-        
-        # Calculate true missing excluding any substituted skills
         missing = []
         for s in relevant_job_skills:
-            if not any(s == m or m.startswith(f"{s} (Sub:") for m in matched):
+            if not any(s == m or str(m).lower().startswith(f"{s} (sub:") for m in matched):
                 missing.append(s)
         missing = sorted(list(set(missing)))
 
-        coverage = (len(matched) / len(relevant_job_skills) * 100) if relevant_job_skills else 0.0
+        # Tier-weighted evidence coverage
+        coverage = (earned_weight / len(relevant_job_skills) * 100) if relevant_job_skills else 0.0
 
-        if coverage >= 99.9:
-            alignment = "Strong Alignment"
-        elif coverage >= 45:
-            alignment = "Partial Alignment"
-        else:
+        # Strict Gating Rules to prevent overclaiming
+        has_fullstack_core = bool(resume_skills.intersection(core_skills)) and bool(resume_skills.intersection(backend_core))
+        has_ml_core = bool(resume_skills.intersection({"machine learning", "scikit-learn", "deep learning", "predictive modeling"}))
+        has_backend_core = bool(resume_skills.intersection(core_skills))
+
+        if capability_name == "full stack development" and not has_fullstack_core:
             alignment = "Low Alignment"
+            coverage = min(coverage, 35.0)
+        elif capability_name in {"machine learning", "data science"} and not has_ml_core:
+            alignment = "Low Alignment"
+            coverage = min(coverage, 40.0)
+        elif capability_name == "backend development" and not has_backend_core:
+            alignment = "Low Alignment"
+            coverage = min(coverage, 35.0)
+        else:
+            if coverage >= 85.0:
+                alignment = "Strong Alignment"
+            elif coverage >= 45.0:
+                alignment = "Partial Alignment"
+            else:
+                alignment = "Low Alignment"
 
         requirement_type = (
             "Required"
@@ -461,5 +219,31 @@ def analyze_job_relevant_capabilities(resume_skills, job_skills):
         ),
         reverse=True
     )
+    return results
 
+def analyze_capabilities(resume_skills):
+    resume_skills = normalize_skills(resume_skills)
+    results = []
+    for capability_name, capability in CAPABILITIES.items():
+        core = set(capability.get("core_skills", set()))
+        supp = set(capability.get("supporting_skills", set()))
+        core_m = sorted(resume_skills.intersection(core))
+        supp_m = sorted(resume_skills.intersection(supp))
+        supported = (len(core_m) >= capability.get("minimum_core", 1)) and (len(supp_m) >= capability.get("minimum_supporting", 0))
+
+        if capability_name == "full stack development":
+            backend_core = set(capability.get("backend_core", set()))
+            supported = supported and bool(resume_skills.intersection(core)) and bool(resume_skills.intersection(backend_core))
+
+        if capability_name in {"machine learning", "data science"}:
+            supported = supported and bool(resume_skills.intersection({"machine learning", "scikit-learn", "deep learning", "predictive modeling"}))
+
+        results.append({
+            "capability": capability_name,
+            "description": capability["description"],
+            "supported": supported,
+            "core_matches": core_m,
+            "supporting_matches": supp_m,
+            "evidence_count": len(core_m) + len(supp_m)
+        })
     return results

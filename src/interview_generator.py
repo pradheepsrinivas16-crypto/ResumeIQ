@@ -1,59 +1,39 @@
 """
 Smart Recruiter Interview Question Generator
-Generates targeted technical questions based on candidate evidence levels,
-substitutions, and unverified skill gaps.
+Tailors technical questions to candidate evidence levels, gaps, and claimed competencies.
 """
 
-CURATED_GAP_QUESTIONS = {
-    "rest api": [
-        "How do you typically structure asynchronous HTTP client handling and error boundaries when consuming RESTful APIs in a frontend framework?",
-        "Can you walk us through how you handle API authentication (such as JWT tokens) and state hydration in modern web applications?"
-    ],
-    "react": [
-        "Can you explain your approach to state management when scaling a React application—specifically when choosing between Context API, custom hooks, or external stores?",
-        "How do you optimize render performance in React components that handle frequent updates or large lists?"
-    ],
-    "git": [
-        "Describe your preferred Git branching strategy for collaborative features and how you resolve complex merge conflicts in production branches.",
-        "How do you use interactive rebasing, stashing, or cherry-picking to maintain a clean commit history?"
-    ],
-    "sql": [
-        "Walk us through a scenario where you had to optimize a slow-running SQL query. What indexing strategies or execution plan analyses did you apply?",
-        "How do you approach writing complex analytical queries involving window functions versus subqueries?"
-    ],
-    "python": [
-        "How do you ensure memory efficiency and speed when processing large datasets with Python?",
-        "Can you describe your experience structuring modular, testable Python code using object-oriented principles or functional paradigms?"
-    ],
-    "docker": [
-        "How do you design multi-stage Docker builds to keep production image sizes minimal and secure?",
-        "Can you describe how you configure environment variables and volume persistence across local and containerized environments?"
-    ]
+CURATED_SPECIFIC_QUESTIONS = {
+    "excel": "In your data workflows, when would you use an XLOOKUP or INDEX/MATCH versus structuring data into an Excel Pivot Table or Data Model?",
+    "pandas": "When cleaning messy datasets in Pandas, how do you handle missing values using .fillna() or .dropna(), and how do you avoid chained indexing warnings?",
+    "rest api": "How do you handle asynchronous HTTP responses, status code error handling, and state hydration when consuming RESTful APIs in a frontend framework?",
+    "react": "Can you explain when you would choose React Context API versus external state management, and how you prevent unnecessary component re-renders?",
+    "sql": "Can you explain the difference between a WHERE clause and a HAVING clause when aggregating records in SQL, and when you would use window functions?",
+    "python": "How do you choose between Python list comprehensions, generator expressions, and built-in functions like map/filter when optimizing memory for large datasets?",
+    "power bi": "How do you structure data relationships in Power BI (star schema vs snowflake), and what is your approach to writing performant DAX measures?",
+    "git": "Walk us through how you resolve a Git merge conflict when collaborating on a team feature branch, and what your preferred branching strategy is."
 }
 
-def generate_interview_questions(missing_skills, substituted_skills=None, listed_skills=None):
-    """
-    Generates a structured list of interview questions tailored to the candidate's screening profile.
-    """
+def generate_interview_questions(missing_skills, substituted_skills=None, listed_skills=None, demonstrated_skills=None, projects_summary=None):
     questions = []
     substituted_skills = substituted_skills or {}
     listed_skills = listed_skills or []
+    demonstrated_skills = demonstrated_skills or []
 
     # 1. Questions targeting unverified or missing skills (Priority 1)
     for skill in missing_skills:
         skill_norm = str(skill).strip().lower()
-        if skill_norm in CURATED_GAP_QUESTIONS:
-            for q in CURATED_GAP_QUESTIONS[skill_norm]:
-                questions.append({
-                    "category": f"Gap Validation ({skill.title()})",
-                    "type": "Missing Requirement",
-                    "question": q
-                })
+        if skill_norm in CURATED_SPECIFIC_QUESTIONS:
+            questions.append({
+                "category": f"Gap Validation ({skill.title()})",
+                "type": "Missing Requirement",
+                "question": CURATED_SPECIFIC_QUESTIONS[skill_norm]
+            })
         else:
             questions.append({
                 "category": f"Gap Validation ({skill.title()})",
                 "type": "Missing Requirement",
-                "question": f"The job requires hands-on experience with {skill.title()}, which was not explicitly verified on your resume. Could you describe any recent projects or theoretical understanding you have with this technology?"
+                "question": f"The job requires hands-on experience with {skill.title()}, which was not verified on your resume. Could you describe any academic projects, labs, or coursework where you used this technology?"
             })
 
     # 2. Questions evaluating substitute tooling transitions (Priority 2)
@@ -61,15 +41,38 @@ def generate_interview_questions(missing_skills, substituted_skills=None, listed
         questions.append({
             "category": f"Tooling Transition ({sub_tool.title()} → {target_skill.title()})",
             "type": "Tool Adaptation",
-            "question": f"You demonstrated strong production proficiency in {sub_tool.title()}, while our role specifies {target_skill.title()}. How comfortable are you translating your workflow and component structures into {target_skill.title()}?"
+            "question": f"You demonstrated strong proficiency in {sub_tool.title()}, while our role specifies {target_skill.title()}. How comfortable are you translating your workflow, styles, and assets into {target_skill.title()}?"
         })
 
-    # 3. Questions verifying depth for listed-only skills (Priority 3)
+    # 3. Depth verification for listed-only skills (Priority 3)
     for skill in listed_skills[:2]:
-        questions.append({
-            "category": f"Depth Verification ({skill.title()})",
-            "type": "Listed-Only Skill",
-            "question": f"You have {skill.title()} listed in your technical competencies without an explicit project bullet point. Can you share a concrete production problem where you applied {skill.title()}?"
-        })
+        skill_norm = str(skill).strip().lower()
+        if skill_norm in CURATED_SPECIFIC_QUESTIONS:
+            questions.append({
+                "category": f"Depth Verification ({skill.title()})",
+                "type": "Listed-Only Skill",
+                "question": CURATED_SPECIFIC_QUESTIONS[skill_norm]
+            })
+        else:
+            questions.append({
+                "category": f"Depth Verification ({skill.title()})",
+                "type": "Listed-Only Skill",
+                "question": f"You have {skill.title()} listed in your technical competencies without an explicit project bullet point. Can you describe an academic project or internship task where you applied {skill.title()}?"
+            })
+
+    # 4. If no gaps exist, add deep-dive project verification questions
+    if not missing_skills and demonstrated_skills:
+        if "data analysis" in demonstrated_skills or "python" in demonstrated_skills:
+            questions.append({
+                "category": "Project Deep-Dive (Cricket-Twin AI)",
+                "type": "Project Verification",
+                "question": "In your Cricket-Twin AI project, what specific algorithmic logic did you build yourself for the match performance simulator versus relying on pre-existing packages?"
+            })
+        if "power bi" in demonstrated_skills or "dashboard" in demonstrated_skills:
+            questions.append({
+                "category": "Project Deep-Dive (BI Dashboards)",
+                "type": "Project Verification",
+                "question": "In your Power BI dashboard project, what specific DAX calculations or data transformations did you implement to track stakeholder KPIs?"
+            })
 
     return questions

@@ -282,38 +282,40 @@ def extract_resume_sections(text):
 
     return {key: "\n".join(value) for key, value in sections.items()}
 
+MONTH_REGEX = r"\b(january|february|march|april|may|june|july|august|september|october|november|december|jan|feb|mar|apr|jun|jul|aug|sep|sept|oct|nov|dec)\b"
+
 def clean_evidence_sentence(sentence):
-    """Sanitize snippet: remove leftover dates, company location tails, and dangling punctuation."""
+    """Sanitize snippet: remove dates, month names, bullet glyphs, and trailing punctuation."""
     if not sentence:
         return ""
     text = str(sentence).strip()
-    # Strip leading 'Present' or dates like 'Present React JS'
     text = re.sub(r"^(Present|Current|Date:?)\s*", "", text, flags=re.I)
+    text = re.sub(r"[\u2022\u25cf\u25cb\u25e6\u2023\u25b8\u2013\u2014\-*#●•]+\s*", " ", text)
     text = re.sub(r"\b\d{1,2}[/-]\d{1,2}[/-]\d{2,4}\b", "", text)
+    text = re.sub(MONTH_REGEX + r"\s*\d{2,4}\b", "", text, flags=re.I)
     text = re.sub(r"\b(19|20)\d{2}\s*[-–]\s*(Present|(19|20)\d{2})\b", "", text, flags=re.I)
-    # Strip dangling trailing dashes or colons
+    text = re.sub(r"\b(19|20)\d{2}\b", "", text)
     text = re.sub(r"[\s–—\-:]+$", "", text).strip()
-    text = re.sub(r"^[\s•\-*#–—]+", "", text).strip()
-    text = re.sub(r"\s+", " ", text)
+    text = re.sub(r"\s+", " ", text).strip()
     return text
 
 def extract_skill_snippet(text, aliases, max_len=160):
     if not text:
         return ""
-    raw_units = re.split(r"(?<=[.!?\n])\s+|[\u2022\u25E6\u2023\u25B8\u2013-]\s+", text)
+    raw_units = re.split(r"(?<=[.!?\n])\s+|[\u2022\u25e6\u2023\u25b8\u2013-]\s+", text)
     
-    # Priority 1: Pick project descriptions (contain keywords like built, designed, developed, e-cart, home page, page, app)
+    ACTION_VERBS = {"built", "designed", "analyzed", "developed", "implemented", "performed", "created", "optimized", "managed", "queried", "automated", "visualize", "visualized", "track", "tracking"}
+    
     action_units = []
     other_units = []
 
     for unit in raw_units:
         clean_unit = clean_evidence_sentence(unit)
-        if len(clean_unit) < 12:
+        if len(clean_unit) < 15:
             continue
         unit_lower = clean_unit.lower()
         
-        # Filter out company/employment metadata lines if possible
-        is_company_header = any(term in unit_lower for term in ["technopark", "pvt ltd", "innovative computer", "remote", "internship at", "technologies ltd"])
+        is_metadata = any(term in unit_lower for term in ["technopark", "pvt ltd", "novitech", "intern —", "intern -", "remote", "internship at", "technologies ltd"])
         
         has_alias = False
         for alias in aliases:
@@ -324,9 +326,10 @@ def extract_skill_snippet(text, aliases, max_len=160):
                 break
         
         if has_alias:
-            if not is_company_header:
+            has_action_verb = any(v in unit_lower.split() for v in ACTION_VERBS)
+            if has_action_verb and not is_metadata:
                 action_units.append(clean_unit)
-            else:
+            elif not is_metadata:
                 other_units.append(clean_unit)
 
     chosen = action_units[0] if action_units else (other_units[0] if other_units else "")

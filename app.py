@@ -34,14 +34,19 @@ st.set_page_config(
 
 apply_custom_css()
 
+MONTH_REGEX = r"\b(january|february|march|april|may|june|july|august|september|october|november|december|jan|feb|mar|apr|jun|jul|aug|sep|sept|oct|nov|dec)\b"
+
 def clean_snippet_text(raw_text):
-    """Strip dates, URLs, phone numbers, and pipe delimiters from evidence snippets."""
+    """Strip dates, months, URLs, bullet glyphs, and pipe delimiters from evidence snippets."""
     if not raw_text:
         return ""
     text = str(raw_text).replace("|", " ").replace("\n", " ")
     text = re.sub(r"^(Present|Current|Date:?)\s*", "", text, flags=re.I)
+    text = re.sub(r"[\u2022\u25cf\u25cb\u25e6\u2023\u25b8\u2013\u2014\-*#●•]+\s*", " ", text)
     text = re.sub(r"\b\d{1,2}[/-]\d{1,2}[/-]\d{2,4}\b", "", text)
+    text = re.sub(MONTH_REGEX + r"\s*\d{2,4}\b", "", text, flags=re.I)
     text = re.sub(r"\b(19|20)\d{2}\s*[-–]\s*(Present|(19|20)\d{2})\b", "", text, flags=re.I)
+    text = re.sub(r"\b(19|20)\d{2}\b", "", text)
     text = re.sub(r"[\s–—\-:]+$", "", text).strip()
     text = re.sub(r"\s+", " ", text).strip().lstrip("•-* ")
     return text[:220] + "..." if len(text) > 220 else text
@@ -320,7 +325,6 @@ if screening_mode == "Multi-Resume Batch Leaderboard" and "batch_results" in st.
             help="Show only candidates who meet or exceed this score threshold."
         )
 
-    # Filter strictly on numeric score
     filtered_df = df_board[df_board["Overall Score (%)"] >= float(min_cutoff)].copy().reset_index(drop=True)
     
     if not filtered_df.empty:
@@ -395,20 +399,24 @@ if "result" in st.session_state:
         for r in resp_items
     ) or any(g in result.get("resume_skills", []) for g in ["git", "github", "gitlab"])
 
+    req_skills_list = result.get("required_skills", [])
+    req_skills_set = set(req_skills_list)
+
     # Prepare PDF result copy
     pdf_result = dict(result)
     pdf_matched = list(result.get("matched_skills", []))
-    if git_detected and "git" not in pdf_matched:
+    if git_detected and "git" in req_skills_set and "git" not in pdf_matched:
         pdf_matched.append("git")
-    pdf_result["matched_skills"] = sorted(list(set(pdf_matched)))
+    pdf_result["matched_skills"] = sorted(list(set(s for s in pdf_matched if s in req_skills_set)))
 
     pdf_missing = []
     for s in result.get("missing_skills", []):
         if result.get("skill_evidence", {}).get(s, {}).get("type") == "substitute":
             continue
-        if s in {"git", "version control"} and git_detected:
+        if s in {"git", "version control"} and git_detected and "git" in req_skills_set:
             continue
-        pdf_missing.append(s)
+        if s in req_skills_set:
+            pdf_missing.append(s)
     pdf_result["missing_skills"] = sorted(list(set(pdf_missing)))
 
     top_c1, top_c2 = st.columns([3, 1])
@@ -453,7 +461,6 @@ if "result" in st.session_state:
         required_skill_evidence_levels = result.get("required_skill_evidence_levels", {})
         required_skills = result.get("required_skills", [])
 
-        # Count evidence tiers strictly and compute tied-out score
         c_dem, c_sub, c_list, c_miss = 0, 0, 0, 0
         for sk in required_skills:
             ev = get_normalized_skill_evidence(sk, skill_evidence_levels, required_skill_evidence_levels)
@@ -463,7 +470,7 @@ if "result" in st.session_state:
                 c_sub += 1
                 continue
 
-            if sk in {"git", "version control"} and git_detected:
+            if sk in {"git", "version control"} and git_detected and "git" in req_skills_set:
                 c_dem += 1
                 continue
 
@@ -477,7 +484,6 @@ if "result" in st.session_state:
             else:
                 c_miss += 1
 
-        # Mathematically tied-out skill coverage and final score
         if required_skills:
             total_earned = (c_dem * 1.0) + (c_sub * 0.75) + (c_list * 0.40)
             skill_score = (total_earned / len(required_skills)) * 100.0
@@ -593,10 +599,12 @@ if "result" in st.session_state:
         skill_col1, skill_col2 = st.columns(2, gap="large")
         with skill_col1:
             st.markdown("### ✅ Matched Skills & Valid Substitutes")
-            matched_display = list(result.get("matched_skills", []))
-            if git_detected and "git" not in matched_display:
-                matched_display.append("git")
-            matched_display = sorted(list(set(matched_display)))
+            
+            # STRICT FILTER: Only show matched skills that are in required_skills
+            raw_matched = list(result.get("matched_skills", []))
+            if git_detected and "git" in req_skills_set and "git" not in raw_matched:
+                raw_matched.append("git")
+            matched_display = sorted(list(set(s for s in raw_matched if s in req_skills_set)))
 
             if matched_display:
                 chips = ""
@@ -615,10 +623,10 @@ if "result" in st.session_state:
         with skill_col2:
             st.markdown("### ❌ Unmatched Skill Gaps")
             real_missing = []
-            for s in result.get("required_skills", []):
+            for s in required_skills:
                 if result.get("skill_evidence", {}).get(s, {}).get("type") == "substitute":
                     continue
-                if s in {"git", "version control"} and git_detected:
+                if s in {"git", "version control"} and git_detected and "git" in req_skills_set:
                     continue
                 ev = get_normalized_skill_evidence(s, result.get("skill_evidence_levels", {}), result.get("required_skill_evidence_levels", {}))
                 st_code = str(ev.get("status", "missing")).strip().lower()
@@ -650,7 +658,7 @@ if "result" in st.session_state:
                         evidence["status"] = "substitute"
                         evidence["substitute_tool"] = skill_ev_dict.get("substitute_tool", "Figma")
 
-                    if skill in {"git", "version control"} and git_detected:
+                    if skill in {"git", "version control"} and git_detected and "git" in req_skills_set:
                         evidence["status"] = "demonstrated"
                         evidence["sections"] = ["projects", "experience"]
                         if not evidence.get("snippet"):
@@ -666,7 +674,7 @@ if "result" in st.session_state:
                         supporting.append((skill, evidence))
                     elif raw_status in {"listed", "listed_only", "listed only"}:
                         listed.append((skill, evidence))
-                    elif skill in result.get("matched_skills", []):
+                    elif skill in matched_display:
                         evidence["status"] = "demonstrated"
                         evidence["sections"] = ["projects"]
                         demonstrated.append((skill, evidence))
@@ -775,10 +783,10 @@ if "result" in st.session_state:
         bullet_gap_options = [
             s for s in result.get("missing_skills", []) 
             if result.get("skill_evidence", {}).get(s, {}).get("type") != "substitute"
-            and not (s in {"git", "version control"} and git_detected)
+            and not (s in {"git", "version control"} and git_detected and "git" in req_skills_set)
         ]
         if not bullet_gap_options:
-            bullet_gap_options = [s for s in result.get("missing_skills", []) if not (s in {"git", "version control"} and git_detected)]
+            bullet_gap_options = [s for s in result.get("missing_skills", []) if not (s in {"git", "version control"} and git_detected and "git" in req_skills_set)]
 
         if bullet_gap_options:
             st.write("")
@@ -805,7 +813,7 @@ if "result" in st.session_state:
 
         # SMART RECRUITER INTERVIEW QUESTIONS
         subs_map = {}
-        for s in result.get("required_skills", []):
+        for s in required_skills:
             if result.get("skill_evidence", {}).get(s, {}).get("type") == "substitute":
                 sub_tool = result.get("skill_evidence", {}).get(s, {}).get("substitute_tool", "Equivalent tool")
                 subs_map[s] = sub_tool
@@ -813,7 +821,8 @@ if "result" in st.session_state:
         interview_questions = generate_interview_questions(
             missing_skills=real_missing,
             substituted_skills=subs_map,
-            listed_skills=[s for s, ev in (listed if 'listed' in locals() else [])]
+            listed_skills=[s for s, ev in (listed if 'listed' in locals() else [])],
+            demonstrated_skills=[s for s, ev in (demonstrated if 'demonstrated' in locals() else [])]
         )
 
         if interview_questions:
@@ -827,7 +836,7 @@ if "result" in st.session_state:
                     unsafe_allow_html=True
                 )
                 for q_idx, q_item in enumerate(interview_questions):
-                    badge_color = "#ef4444" if q_item["type"] == "Missing Requirement" else ("#f59e0b" if q_item["type"] == "Tool Adaptation" else "#3b82f6")
+                    badge_color = "#ef4444" if q_item["type"] == "Missing Requirement" else ("#f59e0b" if q_item["type"] == "Tool Adaptation" else ("#10b981" if q_item["type"] == "Project Verification" else "#3b82f6"))
                     render_html(
                         f"""
                         <div style="background: rgba(255, 255, 255, 0.03); border: 1px solid rgba(255, 255, 255, 0.08); border-left: 3px solid {badge_color}; border-radius: 8px; padding: 12px 16px; margin-bottom: 10px;">
@@ -895,9 +904,11 @@ if "result" in st.session_state:
             passed_resume_skills.append("git")
             passed_resume_skills.append("version control")
 
+        # Pass tier evidence levels to capability engine for tier-weighted coverage
         job_capabilities = analyze_job_relevant_capabilities(
             passed_resume_skills,
-            result.get("required_skills", [])
+            result.get("required_skills", []),
+            skill_evidence_levels=result.get("required_skill_evidence_levels", result.get("skill_evidence_levels", {}))
         )
         if job_capabilities:
             capability_columns = st.columns(2)
@@ -987,6 +998,7 @@ if "result" in st.session_state:
                     status_icon = "🟢" if status == "Strong Fit" else ("🟡" if status == "Moderate Fit" else "🔴")
                     matched_cnt = len(role_result["matched_skills"])
                     missing_cnt = len(role_result["missing_skills"])
+                    gap_label = "gap" if missing_cnt == 1 else "gaps"
 
                     render_html(
                         f"""
@@ -994,7 +1006,7 @@ if "result" in st.session_state:
                             <div class="metric-label">RANK {index + 1}</div>
                             <div class="metric-value" style="font-size:20px;">{role_result["role"]}</div>
                             <div style="color:#93c5fd;font-size:24px;font-weight:800;margin-top:8px;">{coverage:.1f}%</div>
-                            <div class="metric-subtitle" style="color:#94a3b8;">{status_icon} {status} • {matched_cnt} matched • {missing_cnt} gaps</div>
+                            <div class="metric-subtitle" style="color:#94a3b8;">{status_icon} {status} • {matched_cnt} matched • {missing_cnt} {gap_label}</div>
                         </div>
                         """,
                         unsafe_allow_html=True
@@ -1023,7 +1035,7 @@ if "result" in st.session_state:
                     "It does not penalize or alter the deterministic MiniLM + evidence scoring formula."
                 )
 
-    # Reset & Responsible AI
+    # Reset
     st.write("")
     col_l, col_m, col_r = st.columns([1, 2, 1])
     with col_m:
@@ -1032,6 +1044,7 @@ if "result" in st.session_state:
                 del st.session_state[k]
             st.rerun()
 
+    # SINGLE ETHICAL NOTICE PLACED AT THE BOTTOM OF THE PAGE
     render_html(
         """
         <div class="responsible-ai" style="margin-top: 25px;">
