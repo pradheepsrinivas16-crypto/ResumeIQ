@@ -344,7 +344,6 @@ def find_contextual_skill_evidence(resume_text, skill):
     aliases = SKILL_ALIASES.get(skill, [skill])
     evidence = []
 
-    # Priority 1: Projects / Experience / Internships
     for section_name in ["projects", "experience", "internship", "certifications", "education", "skills"]:
         section_text = sections.get(section_name, "")
         if not section_text.strip():
@@ -389,7 +388,6 @@ def classify_skill_evidence(resume_text, skill):
     strong_sections = {"projects", "experience", "internship"}
     strong_found = [s for s in found_sections if s in strong_sections]
 
-    # 1. Demonstrated in active project/work sections (1.0x)
     if strong_found:
         substantive_body = "\n".join(v for k, v in sections.items() if k in strong_sections)
         snippet = extract_skill_snippet(substantive_body, aliases)
@@ -400,7 +398,6 @@ def classify_skill_evidence(resume_text, skill):
             "confidence": 1.0,
         }
 
-    # 2. Check Valid Industry Substitutions (0.75x)
     candidate_all_skills = extract_skills(resume_text)
     substitute_tool = find_equivalent_skill(skill, candidate_all_skills)
     if substitute_tool:
@@ -411,7 +408,6 @@ def classify_skill_evidence(resume_text, skill):
             "confidence": 0.75,
         }
 
-    # 3. Listed in Skills section (0.40x)
     if "skills" in found_sections:
         return {
             "status": "listed",
@@ -419,7 +415,6 @@ def classify_skill_evidence(resume_text, skill):
             "confidence": 0.40,
         }
 
-    # 4. Education / Certifications (0.70x)
     supporting_sections = {"certifications", "education"}
     supporting_found = [s for s in found_sections if s in supporting_sections]
     if supporting_found:
@@ -429,7 +424,6 @@ def classify_skill_evidence(resume_text, skill):
             "confidence": 0.70,
         }
 
-    # 5. Full document fallback (strictly listed 0.40x, never demonstrated)
     norm_full = normalize_text(resume_text)
     for alias in aliases:
         alias_norm = normalize_text(alias)

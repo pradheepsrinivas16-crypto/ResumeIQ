@@ -1,11 +1,19 @@
 from pathlib import Path
 import sys
 
+# ============================================================
+# PATH SETUP
+# ============================================================
+
 SRC_DIR = Path(__file__).resolve().parent
 PROJECT_DIR = SRC_DIR.parent
 
 if str(SRC_DIR) not in sys.path:
     sys.path.append(str(SRC_DIR))
+
+# ============================================================
+# CAPABILITY DEFINITIONS
+# ============================================================
 
 CAPABILITIES = {
     "frontend development": {
@@ -102,10 +110,18 @@ CAPABILITIES = {
     }
 }
 
+# ============================================================
+# NORMALIZATION
+# ============================================================
+
 def normalize_skills(skills):
     if not skills:
         return set()
     return {str(skill).lower().strip() for skill in skills if str(skill).strip()}
+
+# ============================================================
+# JOB-RELEVANT CAPABILITY ANALYSIS
+# ============================================================
 
 def analyze_job_relevant_capabilities(resume_skills, job_skills, skill_evidence_levels=None):
     resume_skills = normalize_skills(resume_skills)
@@ -169,7 +185,7 @@ def analyze_job_relevant_capabilities(resume_skills, job_skills, skill_evidence_
                 missing.append(s)
         missing = sorted(list(set(missing)))
 
-        # Tier-weighted evidence coverage
+        # Evidence-weighted coverage calculation
         coverage = (earned_weight / len(relevant_job_skills) * 100) if relevant_job_skills else 0.0
 
         # Strict Gating Rules to prevent overclaiming

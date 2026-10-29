@@ -14,7 +14,7 @@ CURATED_SPECIFIC_QUESTIONS = {
     "git": "Walk us through how you resolve a Git merge conflict when collaborating on a team feature branch, and what your preferred branching strategy is."
 }
 
-def generate_interview_questions(missing_skills, substituted_skills=None, listed_skills=None, demonstrated_skills=None, projects_summary=None):
+def generate_interview_questions(missing_skills, substituted_skills=None, listed_skills=None, demonstrated_skills=None):
     questions = []
     substituted_skills = substituted_skills or {}
     listed_skills = listed_skills or []
