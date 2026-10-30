@@ -198,6 +198,7 @@ def normalize_text(text):
     if not text:
         return ""
     text = str(text).lower()
+    # Normalize em-dashes and en-dashes to single hyphen without destroying intra-word hyphens
     text = text.replace("–", "-").replace("—", "-")
     text = re.sub(r"\s+", " ", text)
     return text.strip()
@@ -229,10 +230,10 @@ RESUME_SECTION_HEADINGS = {
 }
 
 SECTION_STRENGTH = {
-    "internship": "strong",
+    "internship": "supporting",
     "experience": "strong",
     "projects": "strong",
-    "skills": "direct",
+    "skills": "listed",
     "certifications": "supporting",
     "education": "supporting",
     "profile": "supporting",
@@ -280,9 +281,9 @@ MONTH_REGEX = r"\b(january|february|march|april|may|june|july|august|september|o
 
 def clean_evidence_sentence(sentence):
     """
-    Sanitize evidence snippet while preserving intra-word hyphens:
-    - Retains: 'end-to-end', 'data-driven', 'Cricket-Twin'
-    - Removes: bullets, isolated date stamps, and leading/trailing dashes.
+    Sanitizes snippet:
+    - Removes date ranges, month names, and bullet characters.
+    - PRESERVES intra-word hyphens (e.g. 'E-cart', 'e-commerce', 'end-to-end', 'data-driven').
     """
     if not sentence:
         return ""
@@ -293,7 +294,7 @@ def clean_evidence_sentence(sentence):
     text = re.sub(MONTH_REGEX + r"\s*\d{2,4}\b", "", text, flags=re.I)
     text = re.sub(r"\b(19|20)\d{2}\s*[-–—]\s*(Present|(19|20)\d{2})\b", "", text, flags=re.I)
     text = re.sub(r"\b(19|20)\d{2}\b", "", text)
-    # Strip isolated dashes that are not connecting words
+    # Strip isolated dashes that are NOT part of a compound word
     text = re.sub(r"(?<![a-zA-Z0-9])[-–—]+(?![a-zA-Z0-9])", " ", text)
     text = re.sub(r"(^\s*[:;,.\s]+|[:;,.\s]+$)", "", text).strip()
     text = re.sub(r"\s+", " ", text).strip()
@@ -303,7 +304,7 @@ def extract_skill_snippet(text, aliases, max_len=240):
     if not text:
         return ""
     
-    # Split by actual bullet markers or newlines
+    # Split text by bullet markers or newlines
     raw_units = re.split(r"\n+|[\u2022\u25cf\u25cb\u25e6\u2023\u25b8●•]|(?<=[.!?])\s+", text)
     
     ACTION_VERBS = {
@@ -322,11 +323,11 @@ def extract_skill_snippet(text, aliases, max_len=240):
             continue
         unit_lower = clean_unit.lower()
         
-        # Guard against unclosed parentheses (project title lines like "Detection (Python, CNN")
+        # Avoid lines with unclosed parentheses (often truncated headers)
         if clean_unit.count("(") > clean_unit.count(")"):
             continue
 
-        # Guard against pure project title/company lines without action verbs
+        # Filter out company/organization headers
         is_metadata = any(term in unit_lower for term in [
             "novitech ltd", "technopark", "pvt ltd", "1stop remote", 
             "intern —", "intern -", "technologies ltd"
@@ -351,41 +352,12 @@ def extract_skill_snippet(text, aliases, max_len=240):
     chosen = action_units[0] if action_units else (other_units[0] if other_units else "")
     if chosen:
         if len(chosen) > max_len:
-            # Clean boundary cut
             cut = chosen[:max_len]
             if " " in cut:
                 return cut.rsplit(" ", 1)[0] + "..."
             return cut + "..."
         return chosen
     return ""
-
-def find_contextual_skill_evidence(resume_text, skill):
-    sections = extract_resume_sections(resume_text)
-    aliases = SKILL_ALIASES.get(skill, [skill])
-    evidence = []
-
-    for section_name in ["projects", "experience", "internship", "certifications", "education", "skills"]:
-        section_text = sections.get(section_name, "")
-        if not section_text.strip():
-            continue
-
-        normalized_section = normalize_text(section_text)
-        for alias in aliases:
-            alias_norm = normalize_text(alias)
-            pattern = r"(?<![a-zA-Z0-9])" + re.escape(alias_norm) + r"(?![a-zA-Z0-9])"
-            if re.search(pattern, normalized_section):
-                snippet = extract_skill_snippet(section_text, aliases)
-                evidence.append({
-                    "section": section_name,
-                    "evidence": alias,
-                    "snippet": snippet if snippet else f"Verified {alias} in {section_name}.",
-                    "strength": SECTION_STRENGTH.get(section_name, "supporting"),
-                })
-                break
-        if evidence:
-            break
-
-    return evidence
 
 def classify_skill_evidence(resume_text, skill):
     sections = extract_resume_sections(resume_text)
@@ -405,11 +377,11 @@ def classify_skill_evidence(resume_text, skill):
                 break
 
     found_sections = list(dict.fromkeys(found_sections))
-    strong_sections = {"projects", "experience", "internship"}
+    strong_sections = {"projects", "experience"}
     strong_found = [s for s in found_sections if s in strong_sections]
 
     if strong_found:
-        substantive_body = "\n".join(v for k, v in sections.items() if k in strong_sections)
+        substantive_body = "\n".join(sections[k] for k in strong_found if k in sections)
         snippet = extract_skill_snippet(substantive_body, aliases)
         if snippet:
             return {
@@ -418,11 +390,24 @@ def classify_skill_evidence(resume_text, skill):
                 "snippet": snippet,
                 "confidence": 1.0,
             }
-        # If mentioned in projects but strictly in heading/tech-list, downgrade to supporting
+        # If in projects/experience without an action verb (tech list or header), assign supporting
         return {
             "status": "supporting",
             "sections": strong_found,
-            "snippet": f"Mentioned in {strong_found[0]} tech list without active sentence context.",
+            "snippet": "",
+            "confidence": 0.70,
+        }
+
+    # Supporting sections: internship, certifications, education
+    supporting_sections = {"internship", "certifications", "education"}
+    supporting_found = [s for s in found_sections if s in supporting_sections]
+    if supporting_found:
+        substantive_body = "\n".join(sections[k] for k in supporting_found if k in sections)
+        snippet = extract_skill_snippet(substantive_body, aliases)
+        return {
+            "status": "supporting",
+            "sections": supporting_found,
+            "snippet": snippet if snippet else "",
             "confidence": 0.70,
         }
 
@@ -433,6 +418,7 @@ def classify_skill_evidence(resume_text, skill):
             "status": "substitute",
             "sections": ["projects"],
             "substitute_tool": substitute_tool,
+            "snippet": "",
             "confidence": 0.75,
         }
 
@@ -440,16 +426,8 @@ def classify_skill_evidence(resume_text, skill):
         return {
             "status": "listed",
             "sections": ["skills"],
+            "snippet": "",
             "confidence": 0.40,
-        }
-
-    supporting_sections = {"certifications", "education"}
-    supporting_found = [s for s in found_sections if s in supporting_sections]
-    if supporting_found:
-        return {
-            "status": "supporting",
-            "sections": supporting_found,
-            "confidence": 0.70,
         }
 
     norm_full = normalize_text(resume_text)
@@ -460,12 +438,14 @@ def classify_skill_evidence(resume_text, skill):
             return {
                 "status": "listed",
                 "sections": ["document_body"],
+                "snippet": "",
                 "confidence": 0.40,
             }
 
     return {
         "status": "missing",
         "sections": [],
+        "snippet": "",
         "confidence": 0.0,
     }
 
@@ -546,67 +526,14 @@ def parse_job_skill_sections(job_description):
         else []
     )
     preferred_skills = [s for s in preferred_skills if s not in required_skills]
+
+    # Resolve "Figma or Adobe XD" "or" patterns: If JD mentions "Figma or Adobe XD", coalesce them into one requirement
+    lower_jd = job_description.lower()
+    if ("figma or adobe xd" in lower_jd or "adobe xd or figma" in lower_jd) and "figma" in required_skills and "adobe xd" in required_skills:
+        # Keep Figma as canonical requirement and treat Adobe XD as alternative
+        required_skills.remove("adobe xd")
+
     return required_skills, preferred_skills
-
-def compare_skill_group(resume_text, skills, resume_skill_set):
-    matched_skills = []
-    related_skills = []
-    missing_skills = []
-    skill_evidence = {}
-
-    for skill in skills:
-        evidence = find_contextual_skill_evidence(resume_text, skill)
-        if evidence or (skill in resume_skill_set):
-            matched_skills.append(skill)
-            skill_evidence[skill] = {
-                "type": "direct",
-                "evidence": evidence if evidence else [{
-                    "section": "projects",
-                    "evidence": skill,
-                    "snippet": f"Demonstrated {format_skill_display(skill)} in project work.",
-                    "strength": "strong"
-                }],
-                "confidence": 1.0
-            }
-            continue
-
-        substitute_tool = find_equivalent_skill(skill, resume_skill_set)
-        if substitute_tool:
-            matched_skills.append(skill)
-            skill_evidence[skill] = {
-                "type": "substitute",
-                "substitute_tool": substitute_tool,
-                "evidence": [{"section": "projects", "evidence": substitute_tool, "strength": "supporting"}],
-                "confidence": 0.75
-            }
-            continue
-
-        related_found = [
-            related for related in RELATED_SKILLS.get(skill, [])
-            if related in resume_skill_set
-        ]
-        if related_found:
-            related_skills.append(skill)
-            skill_evidence[skill] = {
-                "type": "related",
-                "evidence": related_found,
-                "confidence": 0.5
-            }
-            continue
-
-        missing_skills.append(skill)
-        skill_evidence[skill] = {
-            "type": "missing",
-            "evidence": [],
-            "confidence": 0.0
-        }
-
-    return (
-        matched_skills,
-        related_skills,
-        missing_skills,
-        skill_evidence
-    )
 
 def compare_skills(resume_text, job_description):
     resume_skills = extract_skills(resume_text)
@@ -618,62 +545,45 @@ def compare_skills(resume_text, job_description):
     resume_skill_set = set(resume_skills)
     required_skills, preferred_skills = parse_job_skill_sections(job_description)
 
-    matched, related, missing, evidence = compare_skill_group(
-        resume_text,
-        required_skills,
-        resume_skill_set
-    )
-
-    pref_matched, pref_related, pref_missing, pref_evidence = compare_skill_group(
-        resume_text,
-        preferred_skills,
-        resume_skill_set
-    )
-
+    matched = []
+    missing = []
     req_levels = {}
+
     for skill in required_skills:
-        if skill in matched:
-            if skill in evidence and evidence[skill].get("type") == "substitute":
-                sub_tool = evidence[skill].get("substitute_tool", "Equivalent tool")
-                req_levels[skill] = {
+        # Check direct or alias evidence
+        ev = classify_skill_evidence(resume_text, skill)
+        
+        # Check alternative OR groups (e.g., Figma satisfies Adobe XD requirement)
+        if ev["status"] == "missing":
+            alt = find_equivalent_skill(skill, resume_skill_set)
+            if alt:
+                ev = {
                     "status": "substitute",
-                    "substitute_tool": sub_tool,
+                    "substitute_tool": alt,
                     "sections": ["projects"],
+                    "snippet": "",
                     "confidence": 0.75
                 }
-            elif skill in skill_evidence_levels and skill_evidence_levels[skill].get("status") in {"demonstrated", "listed", "supporting"}:
-                req_levels[skill] = skill_evidence_levels[skill]
-            else:
-                snippet_text = ""
-                if skill in evidence and evidence[skill].get("evidence"):
-                    snippet_text = evidence[skill]["evidence"][0].get("snippet", "")
-                req_levels[skill] = {
-                    "status": "demonstrated",
-                    "sections": ["projects"],
-                    "snippet": snippet_text if snippet_text else f"Demonstrated {format_skill_display(skill)} in project work.",
-                    "confidence": 1.0
-                }
-        elif skill in skill_evidence_levels and skill_evidence_levels[skill].get("status") != "missing":
-            req_levels[skill] = skill_evidence_levels[skill]
+
+        req_levels[skill] = ev
+
+        if ev["status"] != "missing":
+            matched.append(skill)
         else:
-            req_levels[skill] = {
-                "status": "missing",
-                "sections": [],
-                "confidence": 0.0
-            }
+            missing.append(skill)
 
     return {
         "resume_skills": resume_skills,
         "required_skills": required_skills,
-        "matched_skills": matched,
-        "related_skills": related,
-        "missing_skills": missing,
-        "skill_evidence": evidence,
+        "matched_skills": sorted(matched),
+        "related_skills": [],
+        "missing_skills": sorted(missing),
+        "skill_evidence": {},
         "skill_evidence_levels": skill_evidence_levels,
         "required_skill_evidence_levels": req_levels,
         "preferred_skills": preferred_skills,
-        "preferred_matched_skills": pref_matched,
-        "preferred_related_skills": pref_related,
-        "preferred_missing_skills": pref_missing,
-        "preferred_skill_evidence": pref_evidence,
+        "preferred_matched_skills": [],
+        "preferred_related_skills": [],
+        "preferred_missing_skills": preferred_skills,
+        "preferred_skill_evidence": {},
     }

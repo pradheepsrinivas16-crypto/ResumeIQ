@@ -37,19 +37,20 @@ apply_custom_css()
 MONTH_REGEX = r"\b(january|february|march|april|may|june|july|august|september|october|november|december|jan|feb|mar|apr|jun|jul|aug|sep|sept|oct|nov|dec)\b"
 
 def clean_snippet_text(raw_text):
-    """Strip dates, months, URLs, bullet glyphs, and pipe delimiters from evidence snippets."""
+    """Strip dates, months, URLs, bullet glyphs, and pipe delimiters from evidence snippets while preserving intra-word hyphens."""
     if not raw_text:
         return ""
     text = str(raw_text).replace("|", " ").replace("\n", " ")
     text = re.sub(r"^(Present|Current|Date:?)\s*", "", text, flags=re.I)
-    text = re.sub(r"[\u2022\u25cf\u25cb\u25e6\u2023\u25b8\u2013\u2014\-*#●•]+\s*", " ", text)
+    text = re.sub(r"[\u2022\u25cf\u25cb\u25e6\u2023\u25b8●•*#]+\s*", " ", text)
     text = re.sub(r"\b\d{1,2}[/-]\d{1,2}[/-]\d{2,4}\b", "", text)
     text = re.sub(MONTH_REGEX + r"\s*\d{2,4}\b", "", text, flags=re.I)
-    text = re.sub(r"\b(19|20)\d{2}\s*[-–]\s*(Present|(19|20)\d{2})\b", "", text, flags=re.I)
+    text = re.sub(r"\b(19|20)\d{2}\s*[-–—]\s*(Present|(19|20)\d{2})\b", "", text, flags=re.I)
     text = re.sub(r"\b(19|20)\d{2}\b", "", text)
+    text = re.sub(r"(?<![a-zA-Z0-9])[-–—]+(?![a-zA-Z0-9])", " ", text)
     text = re.sub(r"[\s–—\-:]+$", "", text).strip()
     text = re.sub(r"\s+", " ", text).strip().lstrip("•-* ")
-    return text[:220] + "..." if len(text) > 220 else text
+    return text[:240] + "..." if len(text) > 240 else text
 
 def get_normalized_skill_evidence(skill, evidence_levels, fallback_levels=None):
     if not skill:
@@ -393,38 +394,55 @@ if "result" in st.session_state:
     result = st.session_state["result"]
     st.divider()
 
-    resp_items = result.get("responsibility_analysis", {}).get("responsibilities", [])
-    git_detected = any(
-        r.get("status") == "strong" and any("git" in str(e.get("evidence", "")).lower() for e in r.get("evidence", []))
-        for r in resp_items
-    ) or any(g in result.get("resume_skills", []) for g in ["git", "github", "gitlab"])
-
     req_skills_list = result.get("required_skills", [])
     req_skills_set = set(req_skills_list)
+    skill_evidence_levels = result.get("skill_evidence_levels", {})
+    required_skill_evidence_levels = result.get("required_skill_evidence_levels", {})
 
-    # Prepare PDF result copy
+    # Reconciled SSOT Tier Counting
+    c_dem, c_sub, c_supp, c_list, c_miss = 0, 0, 0, 0, 0
+    for sk in req_skills_list:
+        ev = required_skill_evidence_levels.get(sk, skill_evidence_levels.get(sk, {}))
+        st_code = str(ev.get("status", "missing")).strip().lower()
+
+        if st_code in {"demonstrated", "strong"}:
+            c_dem += 1
+        elif st_code in {"substitute", "equivalent"}:
+            c_sub += 1
+        elif st_code in {"supporting", "related"}:
+            c_supp += 1
+        elif st_code in {"listed", "listed_only", "listed only"}:
+            c_list += 1
+        else:
+            c_miss += 1
+
+    if req_skills_list:
+        total_earned = (c_dem * 1.0) + (c_sub * 0.75) + (c_supp * 0.70) + (c_list * 0.40)
+        skill_score = (total_earned / len(req_skills_list)) * 100.0
+    else:
+        skill_score = 0.0
+
+    semantic_score = float(result["semantic_score"])
+    skill_score_available = bool(req_skills_list)
+    final_score = (semantic_score * 0.60 + skill_score * 0.40) if skill_score_available else semantic_score
+
+    # Synchronize score fields in result dictionary
+    result["final_score"] = final_score
+    result["skill_score"] = skill_score
+    result["semantic_score"] = semantic_score
+
+    # Prepare PDF result copy - Strictly synchronized with screen state
     pdf_result = dict(result)
-    pdf_matched = list(result.get("matched_skills", []))
-    if git_detected and "git" in req_skills_set and "git" not in pdf_matched:
-        pdf_matched.append("git")
-    pdf_result["matched_skills"] = sorted(list(set(s for s in pdf_matched if s in req_skills_set)))
-
-    pdf_missing = []
-    for s in result.get("missing_skills", []):
-        if result.get("skill_evidence", {}).get(s, {}).get("type") == "substitute":
-            continue
-        if s in {"git", "version control"} and git_detected and "git" in req_skills_set:
-            continue
-        if s in req_skills_set:
-            pdf_missing.append(s)
-    pdf_result["missing_skills"] = sorted(list(set(pdf_missing)))
+    candidate_label = st.session_state.get("resume_name", "Candidate")
+    career_recs_pdf = get_alternative_pathways(result.get("resume_skills", []))
+    pdf_bytes = generate_candidate_pdf(candidate_label, pdf_result, career_recs_pdf)
 
     top_c1, top_c2 = st.columns([3, 1])
     with top_c1:
         render_html(
             f"""
             <div class="section-header" style="margin-bottom:0px;">
-                <div class="section-title">Screening Report: {st.session_state.get('resume_name', 'Candidate')}</div>
+                <div class="section-title">Screening Report: {candidate_label}</div>
                 <div class="section-description" style="color:#94a3b8;">
                     Evidence-based compatibility analysis for uploaded resume and target job.
                 </div>
@@ -433,9 +451,6 @@ if "result" in st.session_state:
             unsafe_allow_html=True
         )
     with top_c2:
-        career_recs_pdf = get_alternative_pathways(result.get("resume_skills", []))
-        candidate_label = st.session_state.get("resume_name", "Candidate")
-        pdf_bytes = generate_candidate_pdf(candidate_label, pdf_result, career_recs_pdf)
         st.download_button(
             label="📄 Download Evaluation PDF",
             data=pdf_bytes,
@@ -457,47 +472,6 @@ if "result" in st.session_state:
     # TAB 1: EXECUTIVE SUMMARY
     # --------------------------------------------------------
     with tab_summary:
-        skill_evidence_levels = result.get("skill_evidence_levels", {})
-        required_skill_evidence_levels = result.get("required_skill_evidence_levels", {})
-        required_skills = result.get("required_skills", [])
-
-        c_dem, c_sub, c_list, c_miss = 0, 0, 0, 0
-        for sk in required_skills:
-            ev = get_normalized_skill_evidence(sk, skill_evidence_levels, required_skill_evidence_levels)
-            skill_ev_dict = result.get("skill_evidence", {}).get(sk, {})
-            
-            if skill_ev_dict.get("type") == "substitute" or ev.get("status") == "substitute":
-                c_sub += 1
-                continue
-
-            if sk in {"git", "version control"} and git_detected and "git" in req_skills_set:
-                c_dem += 1
-                continue
-
-            st_code = str(ev.get("status", "missing")).strip().lower()
-            if st_code in {"demonstrated", "strong", "direct"}:
-                c_dem += 1
-            elif st_code in {"substitute", "equivalent"}:
-                c_sub += 1
-            elif st_code in {"listed", "listed_only", "listed only", "supporting", "related"}:
-                c_list += 1
-            else:
-                c_miss += 1
-
-        if required_skills:
-            total_earned = (c_dem * 1.0) + (c_sub * 0.75) + (c_list * 0.40)
-            skill_score = (total_earned / len(required_skills)) * 100.0
-        else:
-            skill_score = 0.0
-
-        semantic_score = float(result["semantic_score"])
-        skill_score_available = bool(required_skills)
-        
-        final_score = (
-            (semantic_score * 0.60 + skill_score * 0.40)
-            if skill_score_available else semantic_score
-        )
-
         score_col, metrics_col = st.columns([1.25, 1.75], gap="large")
         with score_col:
             render_html(
@@ -548,18 +522,18 @@ if "result" in st.session_state:
             with m1:
                 render_html(
                     f"""<div class="metric-card" style="border-left: 3px solid #10b981;">
-                        <div class="metric-label">Demonstrated / Sub (1.0x/0.75x)</div>
-                        <div class="metric-value" style="color:#34d399;">{c_dem + c_sub}</div>
-                        <div class="metric-subtitle" style="color:#94a3b8;">{c_dem} verified • {c_sub} substitute</div>
+                        <div class="metric-label">Demonstrated (1.0x)</div>
+                        <div class="metric-value" style="color:#34d399;">{c_dem}</div>
+                        <div class="metric-subtitle" style="color:#94a3b8;">Verified in work / projects</div>
                     </div>""",
                     unsafe_allow_html=True
                 )
             with m2:
                 render_html(
-                    f"""<div class="metric-card" style="border-left: 3px solid #3b82f6;">
-                        <div class="metric-label">Listed Only (0.4x)</div>
-                        <div class="metric-value" style="color:#60a5fa;">{c_list}</div>
-                        <div class="metric-subtitle" style="color:#94a3b8;">Skills list / education</div>
+                    f"""<div class="metric-card" style="border-left: 3px solid #f59e0b;">
+                        <div class="metric-label">Sub / Supp ({c_sub + c_supp})</div>
+                        <div class="metric-value" style="color:#fbbf24;">{c_sub + c_supp}</div>
+                        <div class="metric-subtitle" style="color:#94a3b8;">{c_sub} sub (0.75x) • {c_supp} supp (0.70x)</div>
                     </div>""",
                     unsafe_allow_html=True
                 )
@@ -568,7 +542,7 @@ if "result" in st.session_state:
                     f"""<div class="metric-card" style="border-left: 3px solid #ef4444;">
                         <div class="metric-label">Missing (0.0x)</div>
                         <div class="metric-value" style="color:#f87171;">{c_miss}</div>
-                        <div class="metric-subtitle" style="color:#94a3b8;">No evidence found</div>
+                        <div class="metric-subtitle" style="color:#94a3b8;">{c_list} listed-only (0.4x) • {c_miss} missing</div>
                     </div>""",
                     unsafe_allow_html=True
                 )
@@ -596,23 +570,37 @@ if "result" in st.session_state:
     # TAB 2: SKILLS & EVIDENCE
     # --------------------------------------------------------
     with tab_skills:
+        demonstrated = []
+        substitutes = []
+        supporting = []
+        listed = []
+        missing = []
+
+        for skill in req_skills_list:
+            evidence = get_normalized_skill_evidence(skill, skill_evidence_levels, required_skill_evidence_levels)
+            raw_status = str(evidence.get("status", "missing")).strip().lower()
+
+            if raw_status in {"demonstrated", "strong"}:
+                demonstrated.append((skill, evidence))
+            elif raw_status in {"substitute", "equivalent"}:
+                substitutes.append((skill, evidence))
+            elif raw_status in {"supporting", "related"}:
+                supporting.append((skill, evidence))
+            elif raw_status in {"listed", "listed_only", "listed only"}:
+                listed.append((skill, evidence))
+            else:
+                missing.append((skill, evidence))
+
         skill_col1, skill_col2 = st.columns(2, gap="large")
         with skill_col1:
             st.markdown("### ✅ Matched Skills & Valid Substitutes")
-            
-            # STRICT FILTER: Only show matched skills that are in required_skills
-            raw_matched = list(result.get("matched_skills", []))
-            if git_detected and "git" in req_skills_set and "git" not in raw_matched:
-                raw_matched.append("git")
-            matched_display = sorted(list(set(s for s in raw_matched if s in req_skills_set)))
-
-            if matched_display:
+            matched_all = demonstrated + substitutes + supporting + listed
+            if matched_all:
                 chips = ""
-                for skill in matched_display:
-                    skill_ev_dict = result.get("skill_evidence", {}).get(skill, {})
+                for skill, ev in matched_all:
                     disp_name = format_skill_display(skill)
-                    if skill_ev_dict.get("type") == "substitute":
-                        sub_t = format_skill_display(skill_ev_dict.get("substitute_tool", "Equivalent tool"))
+                    if ev.get("status") == "substitute":
+                        sub_t = format_skill_display(ev.get("substitute_tool", "Equivalent tool"))
                         chips += f'<span class="chip chip-match" style="border: 1px dashed #34d399;">✓ {disp_name} (Sub: {sub_t})</span> '
                     else:
                         chips += f'<span class="chip chip-match">✓ {disp_name}</span> '
@@ -622,69 +610,19 @@ if "result" in st.session_state:
 
         with skill_col2:
             st.markdown("### ❌ Unmatched Skill Gaps")
-            real_missing = []
-            for s in required_skills:
-                if result.get("skill_evidence", {}).get(s, {}).get("type") == "substitute":
-                    continue
-                if s in {"git", "version control"} and git_detected and "git" in req_skills_set:
-                    continue
-                ev = get_normalized_skill_evidence(s, result.get("skill_evidence_levels", {}), result.get("required_skill_evidence_levels", {}))
-                st_code = str(ev.get("status", "missing")).strip().lower()
-                if st_code == "missing" or s in result.get("missing_skills", []):
-                    if s not in matched_display:
-                        real_missing.append(s)
-
-            real_missing = sorted(list(set(real_missing)))
-
-            if real_missing:
-                chips = "".join(f'<span class="chip chip-missing">! {format_skill_display(skill)}</span> ' for skill in real_missing)
+            if missing:
+                chips = "".join(f'<span class="chip chip-missing">! {format_skill_display(s)}</span> ' for s, ev in missing)
                 st.markdown(chips, unsafe_allow_html=True)
             else:
                 st.success("No unaddressed skill gaps.")
 
         st.write("")
         with st.expander("🔎 Detailed Skill Evidence Drill-Down", expanded=True):
-            if required_skills:
-                demonstrated = []
-                listed = []
-                supporting = []
-                missing = []
-
-                for skill in required_skills:
-                    evidence = get_normalized_skill_evidence(skill, skill_evidence_levels, required_skill_evidence_levels)
-                    skill_ev_dict = result.get("skill_evidence", {}).get(skill, {})
-                    
-                    if skill_ev_dict.get("type") == "substitute":
-                        evidence["status"] = "substitute"
-                        evidence["substitute_tool"] = skill_ev_dict.get("substitute_tool", "Figma")
-
-                    if skill in {"git", "version control"} and git_detected and "git" in req_skills_set:
-                        evidence["status"] = "demonstrated"
-                        evidence["sections"] = ["projects", "experience"]
-                        if not evidence.get("snippet"):
-                            evidence["snippet"] = "Demonstrated Git version control workflows and collaborative development."
-
-                    raw_status = str(evidence.get("status", "missing")).strip().lower()
-
-                    if raw_status in {"demonstrated", "strong", "direct"}:
-                        demonstrated.append((skill, evidence))
-                    elif raw_status in {"substitute", "equivalent"}:
-                        supporting.append((skill, evidence))
-                    elif raw_status in {"supporting", "supporting_evidence", "supporting evidence", "related"}:
-                        supporting.append((skill, evidence))
-                    elif raw_status in {"listed", "listed_only", "listed only"}:
-                        listed.append((skill, evidence))
-                    elif skill in matched_display:
-                        evidence["status"] = "demonstrated"
-                        evidence["sections"] = ["projects"]
-                        demonstrated.append((skill, evidence))
-                    else:
-                        missing.append((skill, evidence))
-
+            if req_skills_list:
                 evidence_col1, evidence_col2 = st.columns(2, gap="large")
                 with evidence_col1:
                     if demonstrated:
-                        st.markdown("#### 🟢 Demonstrated in Work / Projects")
+                        st.markdown("#### 🟢 Demonstrated in Work / Projects (1.0x)")
                         for skill, evidence in demonstrated:
                             disp_name = format_skill_display(skill)
                             sections = evidence.get("sections", [])
@@ -699,7 +637,7 @@ if "result" in st.session_state:
                                 </div>
                                 """
                             else:
-                                snippet_html = "<div style='font-size:12px; color:#94a3b8; margin-top:4px;'>Direct project or work delivery confirmed.</div>"
+                                snippet_html = "<div style='font-size:12px; color:#94a3b8; margin-top:4px;'>Verified delivery in active project/work sentences.</div>"
 
                             render_html(
                                 f"""
@@ -714,28 +652,34 @@ if "result" in st.session_state:
                                 unsafe_allow_html=True
                             )
 
-                    if supporting:
-                        st.markdown("#### 🟡 Supporting / Industry Substitute")
-                        for skill, evidence in supporting:
+                    if substitutes or supporting:
+                        st.markdown("#### 🟡 Supporting / Industry Substitute (0.75x / 0.70x)")
+                        for skill, evidence in substitutes:
                             disp_name = format_skill_display(skill)
-                            st_name = evidence.get("status", "supporting")
-                            if st_name == "substitute":
-                                sub_name = format_skill_display(evidence.get("substitute_tool", "Equivalent tool"))
-                                desc = f"Candidate demonstrates <strong>{sub_name}</strong>, an industry-standard equivalent tool (0.75x credit awarded)."
-                                title_prefix = f"△ {disp_name} (Sub: {sub_name})"
-                            else:
-                                sections = evidence.get("sections", [])
-                                section_text = ", ".join(str(s).replace("_", " ").title() for s in sections if str(s).strip()) or "Education / Certifications"
-                                desc = f"Verified in: <strong>{section_text}</strong> (0.70x credit awarded)."
-                                title_prefix = f"△ {disp_name}"
-
+                            sub_name = format_skill_display(evidence.get("substitute_tool", "Equivalent tool"))
                             render_html(
                                 f"""
                                 <div class="explanation-card" style="margin-bottom:10px; border-left: 3px solid #f59e0b;">
-                                    <div class="explanation-title" style="color:#fbbf24;">{title_prefix}</div>
+                                    <div class="explanation-title" style="color:#fbbf24;">△ {disp_name} (Sub: {sub_name})</div>
                                     <div class="explanation-text" style="color:#cbd5e1;">
-                                        <strong>Status: Supporting / Substitute (0.75x)</strong><br>
-                                        {desc}
+                                        <strong>Status: Substitute Tool (0.75x)</strong><br>
+                                        Candidate demonstrates <strong>{sub_name}</strong>, satisfying this requirement via industry tooling equivalence.
+                                    </div>
+                                </div>
+                                """,
+                                unsafe_allow_html=True
+                            )
+                        for skill, evidence in supporting:
+                            disp_name = format_skill_display(skill)
+                            sections = evidence.get("sections", [])
+                            section_text = ", ".join(str(s).replace("_", " ").title() for s in sections if str(s).strip()) or "Internship / Education"
+                            render_html(
+                                f"""
+                                <div class="explanation-card" style="margin-bottom:10px; border-left: 3px solid #f59e0b;">
+                                    <div class="explanation-title" style="color:#fbbf24;">△ {disp_name}</div>
+                                    <div class="explanation-text" style="color:#cbd5e1;">
+                                        <strong>Status: Supporting (0.70x)</strong><br>
+                                        Verified in: <strong>{section_text}</strong> (supporting institutional/internship exposure).
                                     </div>
                                 </div>
                                 """,
@@ -744,7 +688,7 @@ if "result" in st.session_state:
 
                 with evidence_col2:
                     if listed:
-                        st.markdown("#### 🔵 Listed Only (Partial Credit)")
+                        st.markdown("#### 🔵 Listed Only (0.4x Partial Credit)")
                         for skill, evidence in listed:
                             disp_name = format_skill_display(skill)
                             render_html(
@@ -761,7 +705,7 @@ if "result" in st.session_state:
                             )
 
                     if missing:
-                        st.markdown("#### 🔴 Missing Requirements")
+                        st.markdown("#### 🔴 Missing Requirements (0.0x)")
                         for skill, evidence in missing:
                             disp_name = format_skill_display(skill)
                             render_html(
@@ -780,14 +724,7 @@ if "result" in st.session_state:
                 st.info("No required skill evidence is available.")
 
         # ATS BULLET OPTIMIZER
-        bullet_gap_options = [
-            s for s in result.get("missing_skills", []) 
-            if result.get("skill_evidence", {}).get(s, {}).get("type") != "substitute"
-            and not (s in {"git", "version control"} and git_detected and "git" in req_skills_set)
-        ]
-        if not bullet_gap_options:
-            bullet_gap_options = [s for s in result.get("missing_skills", []) if not (s in {"git", "version control"} and git_detected and "git" in req_skills_set)]
-
+        bullet_gap_options = [s for s, ev in missing]
         if bullet_gap_options:
             st.write("")
             with st.expander("✨ Resume Bullet-Point Optimizer (ATS Formatted)", expanded=True):
@@ -812,17 +749,13 @@ if "result" in st.session_state:
                         st.code(b, language="text")
 
         # SMART RECRUITER INTERVIEW QUESTIONS
-        subs_map = {}
-        for s in required_skills:
-            if result.get("skill_evidence", {}).get(s, {}).get("type") == "substitute":
-                sub_tool = result.get("skill_evidence", {}).get(s, {}).get("substitute_tool", "Equivalent tool")
-                subs_map[s] = sub_tool
-
+        subs_map = {s: ev.get("substitute_tool", "Eq") for s, ev in substitutes}
         interview_questions = generate_interview_questions(
-            missing_skills=real_missing,
+            missing_skills=[s for s, ev in missing],
             substituted_skills=subs_map,
-            listed_skills=[s for s, ev in (listed if 'listed' in locals() else [])],
-            demonstrated_skills=[s for s, ev in (demonstrated if 'demonstrated' in locals() else [])]
+            listed_skills=[s for s, ev in listed],
+            demonstrated_skills=[s for s, ev in demonstrated],
+            final_score=final_score
         )
 
         if interview_questions:
@@ -836,7 +769,7 @@ if "result" in st.session_state:
                     unsafe_allow_html=True
                 )
                 for q_idx, q_item in enumerate(interview_questions):
-                    badge_color = "#ef4444" if q_item["type"] == "Missing Requirement" else ("#f59e0b" if q_item["type"] == "Tool Adaptation" else ("#10b981" if q_item["type"] == "Project Verification" else "#3b82f6"))
+                    badge_color = "#ef4444" if "Missing" in q_item["type"] or "Gap" in q_item["type"] else ("#f59e0b" if "Tool" in q_item["type"] else ("#10b981" if "Project" in q_item["type"] else "#3b82f6"))
                     render_html(
                         f"""
                         <div style="background: rgba(255, 255, 255, 0.03); border: 1px solid rgba(255, 255, 255, 0.08); border-left: 3px solid {badge_color}; border-radius: 8px; padding: 12px 16px; margin-bottom: 10px;">
@@ -899,29 +832,22 @@ if "result" in st.session_state:
         st.write("")
         st.markdown("### 🎯 High-Level Capability Analysis")
         
-        passed_resume_skills = list(result.get("resume_skills", []))
-        if git_detected and "git" not in passed_resume_skills:
-            passed_resume_skills.append("git")
-            passed_resume_skills.append("version control")
-
-        # Pass tier evidence levels to capability engine for tier-weighted coverage
         job_capabilities = analyze_job_relevant_capabilities(
-            passed_resume_skills,
-            result.get("required_skills", []),
-            skill_evidence_levels=result.get("required_skill_evidence_levels", result.get("skill_evidence_levels", {}))
+            result.get("resume_skills", []),
+            req_skills_list,
+            skill_evidence_levels=required_skill_evidence_levels
         )
         if job_capabilities:
             capability_columns = st.columns(2)
             for index, capability in enumerate(job_capabilities):
                 with capability_columns[index % 2]:
-                    raw_name = capability.get("capability", "Unknown")
-                    name = format_skill_display(raw_name)
+                    name = capability.get("capability", "Unknown")
                     description = capability.get("description", "")
                     coverage = capability.get("coverage", 0.0)
                     alignment = capability.get("alignment", "Low Alignment")
                     requirement_type = capability.get("requirement_type", "Supporting")
                     matched = capability.get("matched_skills", [])
-                    missing = capability.get("missing_skills", [])
+                    missing_caps = capability.get("missing_skills", [])
 
                     status = "✓ Strong Alignment" if alignment == "Strong Alignment" else ("△ Partial Alignment" if alignment == "Partial Alignment" else "! Low Alignment")
                     type_icon = "🎯" if requirement_type == "Required" else "↳"
@@ -941,9 +867,9 @@ if "result" in st.session_state:
                     if matched:
                         st.caption("Matched job evidence")
                         st.markdown("".join(f'<span class="chip chip-match">✓ {format_skill_display(s)}</span> ' for s in matched), unsafe_allow_html=True)
-                    if missing:
+                    if missing_caps:
                         st.caption("Capability gaps")
-                        st.markdown("".join(f'<span class="chip chip-missing">! {format_skill_display(s)}</span> ' for s in missing), unsafe_allow_html=True)
+                        st.markdown("".join(f'<span class="chip chip-missing">! {format_skill_display(s)}</span> ' for s in missing_caps), unsafe_allow_html=True)
 
     # --------------------------------------------------------
     # TAB 4: CAREER & ROLE FIT
