@@ -204,6 +204,7 @@ def normalize_text(text):
     if not text:
         return ""
     text = str(text).lower()
+    # Replace em-dashes and en-dashes with single hyphen
     text = text.replace("–", "-").replace("—", "-")
     text = re.sub(r"\s+", " ", text)
     return text.strip()
@@ -271,7 +272,7 @@ def extract_resume_sections(text):
         clean = line.strip()
         if not clean:
             continue
-        heading = re.sub(r"^[\s•\-*#]+", "", clean).strip()
+        heading = re.sub(r"^[\s•\-*#●]+", "", clean).strip()
         heading_normalized = heading.rstrip(":").strip().lower()
 
         if heading_normalized in RESUME_SECTION_HEADINGS:
@@ -285,53 +286,79 @@ def extract_resume_sections(text):
 MONTH_REGEX = r"\b(january|february|march|april|may|june|july|august|september|october|november|december|jan|feb|mar|apr|jun|jul|aug|sep|sept|oct|nov|dec)\b"
 
 def clean_evidence_sentence(sentence):
-    """Sanitize snippet: remove dates, month names, bullet glyphs, and trailing punctuation."""
+    """
+    Sanitize evidence snippet:
+    - Removes dates, month names, and bullet characters.
+    - PRESERVES intra-word hyphens (e.g. 'end-to-end', 'data-driven', 'Cricket-Twin').
+    """
     if not sentence:
         return ""
     text = str(sentence).strip()
+    # Strip leading marker words
     text = re.sub(r"^(Present|Current|Date:?)\s*", "", text, flags=re.I)
-    text = re.sub(r"[\u2022\u25cf\u25cb\u25e6\u2023\u25b8\u2013\u2014\-*#●•]+\s*", " ", text)
+    # Strip bullet glyphs but keep regular text hyphens intact
+    text = re.sub(r"[\u2022\u25cf\u25cb\u25e6\u2023\u25b8●•*#]+\s*", " ", text)
+    # Strip dates like MM/DD/YYYY or DD-MM-YYYY
     text = re.sub(r"\b\d{1,2}[/-]\d{1,2}[/-]\d{2,4}\b", "", text)
+    # Strip month names with year (e.g. 'Jan 2026', 'June 2025')
     text = re.sub(MONTH_REGEX + r"\s*\d{2,4}\b", "", text, flags=re.I)
-    text = re.sub(r"\b(19|20)\d{2}\s*[-–]\s*(Present|(19|20)\d{2})\b", "", text, flags=re.I)
+    # Strip date ranges like '2024 - 2026' or '2024 - Present'
+    text = re.sub(r"\b(19|20)\d{2}\s*[-–—]\s*(Present|(19|20)\d{2})\b", "", text, flags=re.I)
+    # Strip standalone 4-digit years
     text = re.sub(r"\b(19|20)\d{2}\b", "", text)
-    text = re.sub(r"[\s–—\-:]+$", "", text).strip()
+    # Clean isolated standalone dashes (not surrounded by letters/numbers)
+    text = re.sub(r"(?<![a-zA-Z0-9])[-–—]+(?![a-zA-Z0-9])", " ", text)
+    # Clean leading/trailing punctuation and collapse spaces
+    text = re.sub(r"(^\s*[:;,.\s]+|[:;,.\s]+$)", "", text).strip()
     text = re.sub(r"\s+", " ", text).strip()
     return text
 
-def extract_skill_snippet(text, aliases, max_len=160):
+def extract_skill_snippet(text, aliases, max_len=180):
     if not text:
         return ""
-    raw_units = re.split(r"(?<=[.!?\n])\s+|[\u2022\u25e6\u2023\u25b8\u2013-]\s+", text)
+    # Split text into natural statements: by newlines, periods, or bullet glyphs
+    raw_units = re.split(r"\n+|[\u2022\u25cf\u25cb\u25e6\u2023\u25b8●•]|(?<=[.!?])\s+", text)
     
-    ACTION_VERBS = {"built", "designed", "analyzed", "developed", "implemented", "performed", "created", "optimized", "managed", "queried", "automated", "visualize", "visualized", "track", "tracking"}
+    ACTION_VERBS = {
+        "built", "designed", "analyzed", "developed", "implemented", 
+        "performed", "created", "optimized", "managed", "queried", 
+        "automated", "visualize", "visualized", "track", "tracking", 
+        "conducted", "spearheaded", "engineered", "generated"
+    }
     
     action_units = []
     other_units = []
 
     for unit in raw_units:
         clean_unit = clean_evidence_sentence(unit)
-        if len(clean_unit) < 15:
+        if len(clean_unit) < 18:
             continue
         unit_lower = clean_unit.lower()
         
-        is_metadata = any(term in unit_lower for term in ["technopark", "pvt ltd", "novitech", "intern —", "intern -", "remote", "internship at", "technologies ltd"])
+        # Avoid treating company headers / role headings as evidence
+        is_metadata = any(term in unit_lower for term in [
+            "novitech ltd", "technopark", "pvt ltd", "1stop remote", 
+            "intern —", "intern -", "internship at", "technologies ltd"
+        ])
         
         has_alias = False
         for alias in aliases:
-            alias_norm = normalize_text(alias)
-            pattern = r"(?<![a-zA-Z0-9])" + re.escape(alias_norm) + r"(?![a-zA-Z0-9])"
+            pattern = r"(?<![a-zA-Z0-9])" + re.escape(alias.lower()) + r"(?![a-zA-Z0-9])"
             if re.search(pattern, unit_lower):
                 has_alias = True
                 break
         
         if has_alias:
-            has_action_verb = any(v in unit_lower.split() for v in ACTION_VERBS)
-            if has_action_verb and not is_metadata:
+            # Check for active delivery verb
+            words = set(re.findall(r"\b[a-zA-Z]+\b", unit_lower))
+            has_action = bool(words.intersection(ACTION_VERBS))
+            
+            if has_action and not is_metadata:
                 action_units.append(clean_unit)
             elif not is_metadata:
                 other_units.append(clean_unit)
 
+    # Prefer an active action sentence over a passive mention
     chosen = action_units[0] if action_units else (other_units[0] if other_units else "")
     if chosen:
         if len(chosen) > max_len:
@@ -478,7 +505,7 @@ def _extract_section(text, headings):
     stop_words = {"responsibilities", "requirements", "qualifications", "preferred skills", "required skills", "nice to have", "education", "experience"}
 
     for line in lines:
-        clean = re.sub(r"^[\s•\-*]+", "", line).strip()
+        clean = re.sub(r"^[\s•\-*#●]+", "", line).strip()
         if not clean:
             continue
         heading = clean.rstrip(":").strip().lower()
