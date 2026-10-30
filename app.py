@@ -7,9 +7,6 @@ from src.pdf_generator import generate_candidate_pdf
 from src.bullet_generator import generate_resume_bullets
 from src.interview_generator import generate_interview_questions
 
-# ============================================================
-# PROJECT PATH SETUP
-# ============================================================
 SRC_PATH = os.path.join(os.path.dirname(__file__), "src")
 if SRC_PATH not in sys.path:
     sys.path.append(SRC_PATH)
@@ -22,9 +19,6 @@ from src.capability_engine import analyze_job_relevant_capabilities
 from src.styles import render_html, apply_custom_css
 from src.career_paths import get_alternative_pathways
 
-# ============================================================
-# PAGE CONFIG & STYLES
-# ============================================================
 st.set_page_config(
     page_title="ResumeIQ | AI Resume Intelligence",
     page_icon="◈",
@@ -37,7 +31,6 @@ apply_custom_css()
 MONTH_REGEX = r"\b(january|february|march|april|may|june|july|august|september|october|november|december|jan|feb|mar|apr|jun|jul|aug|sep|sept|oct|nov|dec)\b"
 
 def clean_snippet_text(raw_text):
-    """Strip dates, months, URLs, bullet glyphs, and pipe delimiters from evidence snippets while preserving intra-word hyphens."""
     if not raw_text:
         return ""
     text = str(raw_text).replace("|", " ").replace("\n", " ")
@@ -98,9 +91,6 @@ def get_normalized_skill_evidence(skill, evidence_levels, fallback_levels=None):
 
     return {}
 
-# ============================================================
-# SIDEBAR
-# ============================================================
 with st.sidebar:
     st.markdown('<div class="sidebar-brand">◈ ResumeIQ</div>', unsafe_allow_html=True)
     st.markdown('<div class="sidebar-subtitle" style="color:#94a3b8;">Resume Intelligence Platform</div>', unsafe_allow_html=True)
@@ -119,9 +109,6 @@ with st.sidebar:
     st.divider()
     st.caption("Deep Learning • NLP • Explainable Screening")
 
-# ============================================================
-# HERO
-# ============================================================
 render_html(
     """
     <div class="hero">
@@ -136,18 +123,12 @@ render_html(
     unsafe_allow_html=True
 )
 
-# ============================================================
-# SCREENING MODE SELECTION
-# ============================================================
 screening_mode = st.radio(
     "Select Screening Mode",
     options=["Single Candidate Deep-Dive", "Multi-Resume Batch Leaderboard"],
     horizontal=True
 )
 
-# ============================================================
-# INPUT AREA
-# ============================================================
 if screening_mode == "Single Candidate Deep-Dive":
     input_col1, input_col2 = st.columns([1, 1], gap="large")
 
@@ -210,7 +191,6 @@ if screening_mode == "Single Candidate Deep-Dive":
                     os.remove(temp_path)
 
 else:
-    # MULTI-RESUME BATCH MODE
     input_col1, input_col2 = st.columns([1, 1], gap="large")
 
     with input_col1:
@@ -295,9 +275,6 @@ else:
             if leaderboard_records:
                 st.session_state["batch_results"] = leaderboard_records
 
-# ============================================================
-# BATCH LEADERBOARD DISPLAY
-# ============================================================
 if screening_mode == "Multi-Resume Batch Leaderboard" and "batch_results" in st.session_state:
     st.divider()
 
@@ -382,20 +359,12 @@ if screening_mode == "Multi-Resume Batch Leaderboard" and "batch_results" in st.
             st.success(f"Loaded {selected_candidate_name}. Explore report below.")
     else:
         st.warning(f"No candidates meet the minimum score threshold of {min_cutoff}%.")
-        if "result" in st.session_state:
-            curr_score = st.session_state["result"].get("final_score", 0)
-            if curr_score < min_cutoff:
-                st.info("The previously loaded candidate is below the current score threshold.")
 
-# ============================================================
-# RESULTS (DEEP DIVE REPORT WITH TABS)
-# ============================================================
 if "result" in st.session_state:
     result = st.session_state["result"]
     st.divider()
 
     req_skills_list = result.get("required_skills", [])
-    req_skills_set = set(req_skills_list)
     skill_evidence_levels = result.get("skill_evidence_levels", {})
     required_skill_evidence_levels = result.get("required_skill_evidence_levels", {})
 
@@ -426,16 +395,13 @@ if "result" in st.session_state:
     skill_score_available = bool(req_skills_list)
     final_score = (semantic_score * 0.60 + skill_score * 0.40) if skill_score_available else semantic_score
 
-    # Synchronize score fields in result dictionary
     result["final_score"] = final_score
     result["skill_score"] = skill_score
     result["semantic_score"] = semantic_score
 
-    # Prepare PDF result copy - Strictly synchronized with screen state
-    pdf_result = dict(result)
     candidate_label = st.session_state.get("resume_name", "Candidate")
     career_recs_pdf = get_alternative_pathways(result.get("resume_skills", []))
-    pdf_bytes = generate_candidate_pdf(candidate_label, pdf_result, career_recs_pdf)
+    pdf_bytes = generate_candidate_pdf(candidate_label, result, career_recs_pdf)
 
     top_c1, top_c2 = st.columns([3, 1])
     with top_c1:
@@ -518,7 +484,8 @@ if "result" in st.session_state:
                 )
 
             st.write("")
-            m1, m2, m3 = st.columns(3)
+            # Clean 4-Card Summary Grid
+            m1, m2, m3, m4 = st.columns(4)
             with m1:
                 render_html(
                     f"""<div class="metric-card" style="border-left: 3px solid #10b981;">
@@ -531,18 +498,27 @@ if "result" in st.session_state:
             with m2:
                 render_html(
                     f"""<div class="metric-card" style="border-left: 3px solid #f59e0b;">
-                        <div class="metric-label">Sub / Supp ({c_sub + c_supp})</div>
+                        <div class="metric-label">Sub / Supp (0.75/0.70x)</div>
                         <div class="metric-value" style="color:#fbbf24;">{c_sub + c_supp}</div>
-                        <div class="metric-subtitle" style="color:#94a3b8;">{c_sub} sub (0.75x) • {c_supp} supp (0.70x)</div>
+                        <div class="metric-subtitle" style="color:#94a3b8;">{c_sub} sub • {c_supp} supp</div>
                     </div>""",
                     unsafe_allow_html=True
                 )
             with m3:
                 render_html(
+                    f"""<div class="metric-card" style="border-left: 3px solid #3b82f6;">
+                        <div class="metric-label">Listed Only (0.40x)</div>
+                        <div class="metric-value" style="color:#60a5fa;">{c_list}</div>
+                        <div class="metric-subtitle" style="color:#94a3b8;">Technical skills list</div>
+                    </div>""",
+                    unsafe_allow_html=True
+                )
+            with m4:
+                render_html(
                     f"""<div class="metric-card" style="border-left: 3px solid #ef4444;">
                         <div class="metric-label">Missing (0.0x)</div>
                         <div class="metric-value" style="color:#f87171;">{c_miss}</div>
-                        <div class="metric-subtitle" style="color:#94a3b8;">{c_list} listed-only (0.4x) • {c_miss} missing</div>
+                        <div class="metric-subtitle" style="color:#94a3b8;">No evidence found</div>
                     </div>""",
                     unsafe_allow_html=True
                 )
@@ -593,19 +569,31 @@ if "result" in st.session_state:
 
         skill_col1, skill_col2 = st.columns(2, gap="large")
         with skill_col1:
-            st.markdown("### ✅ Matched Skills & Valid Substitutes")
-            matched_all = demonstrated + substitutes + supporting + listed
-            if matched_all:
-                chips = ""
-                for skill, ev in matched_all:
-                    disp_name = format_skill_display(skill)
+            st.markdown("### ✅ Matched Competencies")
+            
+            if demonstrated or substitutes:
+                st.caption("Verified in Projects / Work (1.0x / 0.75x)")
+                v_chips = ""
+                for skill, ev in (demonstrated + substitutes):
+                    disp = format_skill_display(skill)
                     if ev.get("status") == "substitute":
-                        sub_t = format_skill_display(ev.get("substitute_tool", "Equivalent tool"))
-                        chips += f'<span class="chip chip-match" style="border: 1px dashed #34d399;">✓ {disp_name} (Sub: {sub_t})</span> '
+                        sub_t = format_skill_display(ev.get("substitute_tool", "Eq"))
+                        v_chips += f'<span class="chip chip-match" style="border: 1px dashed #34d399;">✓ {disp} (Sub: {sub_t})</span> '
                     else:
-                        chips += f'<span class="chip chip-match">✓ {disp_name}</span> '
-                st.markdown(chips, unsafe_allow_html=True)
-            else:
+                        v_chips += f'<span class="chip chip-match">✓ {disp}</span> '
+                st.markdown(v_chips, unsafe_allow_html=True)
+
+            if supporting:
+                st.caption("Supporting Context (0.70x)")
+                supp_chips = "".join(f'<span class="chip chip-match" style="border-color: #fbbf24; color: #fef3c7;">△ {format_skill_display(s)}</span> ' for s, ev in supporting)
+                st.markdown(supp_chips, unsafe_allow_html=True)
+
+            if listed:
+                st.caption("Listed Only without active project sentence (0.40x)")
+                list_chips = "".join(f'<span class="chip chip-match" style="border-color: #60a5fa; color: #dbeafe;">• {format_skill_display(s)}</span> ' for s, ev in listed)
+                st.markdown(list_chips, unsafe_allow_html=True)
+
+            if not (demonstrated or substitutes or supporting or listed):
                 st.info("No required skills were matched.")
 
         with skill_col2:
@@ -629,15 +617,11 @@ if "result" in st.session_state:
                             section_text = ", ".join(str(s).replace("_", " ").title() for s in sections if str(s).strip()) or "Projects / Experience"
                             snippet = clean_snippet_text(evidence.get("snippet", ""))
                             
-                            snippet_html = ""
-                            if snippet:
-                                snippet_html = f"""
-                                <div style="margin-top:8px; padding:8px 12px; background:rgba(56, 189, 248, 0.08); border-left:3px solid #38bdf8; border-radius:4px; font-style:italic; font-size:12.5px; color:#cbd5e1;">
-                                    "{snippet}"
-                                </div>
-                                """
-                            else:
-                                snippet_html = "<div style='font-size:12px; color:#94a3b8; margin-top:4px;'>Verified delivery in active project/work sentences.</div>"
+                            snippet_html = f"""
+                            <div style="margin-top:8px; padding:8px 12px; background:rgba(56, 189, 248, 0.08); border-left:3px solid #38bdf8; border-radius:4px; font-style:italic; font-size:12.5px; color:#cbd5e1;">
+                                "{snippet}"
+                            </div>
+                            """ if snippet else "<div style='font-size:12px; color:#94a3b8; margin-top:4px;'>Verified delivery in active project/work sentences.</div>"
 
                             render_html(
                                 f"""
@@ -673,13 +657,20 @@ if "result" in st.session_state:
                             disp_name = format_skill_display(skill)
                             sections = evidence.get("sections", [])
                             section_text = ", ".join(str(s).replace("_", " ").title() for s in sections if str(s).strip()) or "Internship / Education"
+                            snippet = clean_snippet_text(evidence.get("snippet", ""))
+                            snippet_html = f"""
+                            <div style="margin-top:8px; padding:8px 12px; background:rgba(251, 191, 36, 0.08); border-left:3px solid #fbbf24; border-radius:4px; font-style:italic; font-size:12.5px; color:#cbd5e1;">
+                                "{snippet}"
+                            </div>
+                            """ if snippet else "<div style='font-size:12px; color:#94a3b8; margin-top:4px;'>Institutional/internship reference context.</div>"
+
                             render_html(
                                 f"""
                                 <div class="explanation-card" style="margin-bottom:10px; border-left: 3px solid #f59e0b;">
                                     <div class="explanation-title" style="color:#fbbf24;">△ {disp_name}</div>
                                     <div class="explanation-text" style="color:#cbd5e1;">
-                                        <strong>Status: Supporting (0.70x)</strong><br>
-                                        Verified in: <strong>{section_text}</strong> (supporting institutional/internship exposure).
+                                        <strong>Status: Supporting (0.70x)</strong> • Section: <strong>{section_text}</strong>
+                                        {snippet_html}
                                     </div>
                                 </div>
                                 """,
@@ -688,7 +679,7 @@ if "result" in st.session_state:
 
                 with evidence_col2:
                     if listed:
-                        st.markdown("#### 🔵 Listed Only (0.4x Partial Credit)")
+                        st.markdown("#### 🔵 Listed Only (0.40x Partial Credit)")
                         for skill, evidence in listed:
                             disp_name = format_skill_display(skill)
                             render_html(
@@ -753,6 +744,7 @@ if "result" in st.session_state:
         interview_questions = generate_interview_questions(
             missing_skills=[s for s, ev in missing],
             substituted_skills=subs_map,
+            supporting_skills=[s for s, ev in supporting],
             listed_skills=[s for s, ev in listed],
             demonstrated_skills=[s for s, ev in demonstrated],
             final_score=final_score
@@ -769,7 +761,7 @@ if "result" in st.session_state:
                     unsafe_allow_html=True
                 )
                 for q_idx, q_item in enumerate(interview_questions):
-                    badge_color = "#ef4444" if "Missing" in q_item["type"] or "Gap" in q_item["type"] else ("#f59e0b" if "Tool" in q_item["type"] else ("#10b981" if "Project" in q_item["type"] else "#3b82f6"))
+                    badge_color = "#ef4444" if "Missing" in q_item["type"] or "Gap" in q_item["type"] else ("#f59e0b" if "Tool" in q_item["type"] or "Supporting" in q_item["type"] else ("#10b981" if "Project" in q_item["type"] else "#3b82f6"))
                     render_html(
                         f"""
                         <div style="background: rgba(255, 255, 255, 0.03); border: 1px solid rgba(255, 255, 255, 0.08); border-left: 3px solid {badge_color}; border-radius: 8px; padding: 12px 16px; margin-bottom: 10px;">
@@ -961,7 +953,6 @@ if "result" in st.session_state:
                     "It does not penalize or alter the deterministic MiniLM + evidence scoring formula."
                 )
 
-    # Reset
     st.write("")
     col_l, col_m, col_r = st.columns([1, 2, 1])
     with col_m:
@@ -970,7 +961,6 @@ if "result" in st.session_state:
                 del st.session_state[k]
             st.rerun()
 
-    # SINGLE ETHICAL NOTICE PLACED AT THE BOTTOM OF THE PAGE
     render_html(
         """
         <div class="responsible-ai" style="margin-top: 25px;">
@@ -985,9 +975,6 @@ if "result" in st.session_state:
         unsafe_allow_html=True
     )
 
-# ============================================================
-# FOOTER
-# ============================================================
 render_html(
     """
     <div class="footer" style="color: #94a3b8;">

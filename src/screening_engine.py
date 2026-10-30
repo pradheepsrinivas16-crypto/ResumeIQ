@@ -328,6 +328,8 @@ RESPONSIBILITY_PATTERNS = [
             "version control",
             "collaborative development",
             "git workflows",
+            "using git workflows",
+            "git",
         ],
         "related_skills": [
             "git",
@@ -375,7 +377,7 @@ def extract_job_responsibilities(job_description):
             responsibilities.append(clean)
 
     if not responsibilities:
-        action_verb_pattern = r"^(Build|Develop|Design|Implement|Manage|Lead|Collaborate|Create|Maintain|Query|Integrate|Optimize|Drive|Architect|Analyze|Conduct)\b"
+        action_verb_pattern = r"^(Build|Develop|Design|Implement|Manage|Lead|Collaborate|Create|Maintain|Query|Integrate|Optimize|Drive|Architect|Analyze|Conduct|Write)\b"
         for line in lines:
             clean = line.strip().lstrip("•-* \t")
             if re.search(action_verb_pattern, clean, flags=re.I) and len(clean) > 20:
@@ -498,17 +500,18 @@ def analyze_job_responsibilities(resume_text, job_description, skill_evidence_le
         elif rule["name"] == "testing and debugging":
             direct_patterns = ["debugging", "debug", "testing web applications", "test and maintain"]
         elif rule["name"] == "version control":
-            direct_patterns = ["git", "github", "version control", "git workflows"]
+            # Only match if active sentence mentioning workflows/git exists in substantive body
+            direct_patterns = ["git version control", "git workflows", "version control using git", "collaborative development using git"]
         elif rule["name"] == "scalable application development":
             direct_patterns = ["scalable application", "scalable web application", "scalable system", "scalability"]
         elif rule["name"] == "dashboard development":
             direct_patterns = ["dashboard", "dashboards", "power bi dashboards", "interactive dashboards", "reports"]
         elif rule["name"] == "sql data querying":
-            direct_patterns = ["sql", "datasets using python and sql", "query", "relational databases", "extract"]
+            direct_patterns = ["sql", "datasets using python and sql", "query relational databases", "extract and transform"]
         elif rule["name"] == "exploratory data analysis":
-            direct_patterns = ["exploratory data analysis", "eda", "data cleaning", "preprocessing", "statistical"]
+            direct_patterns = ["exploratory data analysis", "eda", "data cleaning", "preprocessing"]
         elif rule["name"] == "business insights and kpis":
-            direct_patterns = ["kpis", "kpi", "data-driven", "business metrics", "insights", "key performance indicators"]
+            direct_patterns = ["kpis", "kpi", "data-driven business decisions", "business metrics", "key performance indicators"]
 
         raw_direct = []
         for pattern in direct_patterns:
@@ -516,7 +519,6 @@ def analyze_job_responsibilities(resume_text, job_description, skill_evidence_le
             if normalized_pattern and normalized_pattern in normalized_resume:
                 raw_direct.append(pattern)
 
-        # Deduplicate substrings
         unique_direct = []
         for pat in sorted(raw_direct, key=len, reverse=True):
             if not any(pat in existing for existing in unique_direct):
@@ -542,24 +544,14 @@ def analyze_job_responsibilities(resume_text, job_description, skill_evidence_le
                     "evidence": skill_evidence
                 })
 
+        # STRICT CONSISTENT RULE: Check evidence status of underlying skills
         if direct_evidence:
-            # CHECK GATING: If the matched line explicitly mentions tools like Pandas or NumPy that are only 'listed', downgrade status
-            lower_resp = responsibility.lower()
-            if ("pandas" in lower_resp or "numpy" in lower_resp or "statistical modeling" in lower_resp):
-                pandas_status = str(ev_levels.get("pandas", {}).get("status", "")).lower()
-                numpy_status = str(ev_levels.get("numpy", {}).get("status", "")).lower()
-                if pandas_status == "listed" or numpy_status == "listed":
-                    status = "related"
-                    reason = "Candidate has relevant data preprocessing experience, but specific statistical/modeling libraries (Pandas/NumPy) are listed only without dedicated modeling bullet points."
-                else:
-                    status = "strong"
-                    reason = "The resume contains direct evidence in experience or projects supporting this responsibility."
-            else:
-                status = "strong"
-                reason = "The resume contains direct evidence in experience or projects supporting this responsibility."
-        elif related_evidence:
+            status = "strong"
+            reason = "The resume contains direct evidence in experience or projects supporting this responsibility."
+        elif related_evidence or (rule["name"] == "version control" and "git" in resume_skills):
+            # If Git or related skills are listed only, label consistently as 'related'
             status = "related"
-            reason = "The resume contains related skills, but does not explicitly demonstrate the full responsibility."
+            reason = "Skills referenced on resume, but lack full active project context demonstrating this responsibility."
         else:
             status = "missing"
             reason = "No direct or meaningful related evidence was detected in the resume."
@@ -596,7 +588,6 @@ def screen_resume(resume_text, job_description):
     required_skills = skill_result["required_skills"]
     skill_score_available = bool(required_skills)
 
-    # Single Source of Truth evidence levels
     ssot_evidence_levels = skill_result.get(
         "required_skill_evidence_levels",
         skill_result.get("skill_evidence_levels", {})

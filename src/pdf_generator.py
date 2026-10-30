@@ -6,17 +6,18 @@ Generates an executive, single-page PDF brief strictly synchronized with the UI 
 from io import BytesIO
 from reportlab.lib import colors
 from reportlab.lib.pagesizes import letter
-from reportlab.lib.units import inch
 from reportlab.platypus import (
-    SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle, KeepTogether
+    SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle
 )
 from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
 from src.skill_matcher import format_skill_display
 
+# Hard centrality priority ordering: core engineering and data skills first
 JD_CENTRALITY = [
-    "sql", "power bi", "dashboard", "data analysis", "excel", 
-    "python", "data visualization", "kpi", "database", 
-    "exploratory data analysis", "pandas", "statistical analysis", "numpy"
+    "rest api", "react", "sql", "power bi", "javascript", "html", "css",
+    "dashboard", "data analysis", "python", "excel", "responsive web design",
+    "ui/ux", "git", "figma", "adobe xd", "database", "exploratory data analysis",
+    "pandas", "numpy", "kpi", "statistical analysis"
 ]
 
 def generate_candidate_pdf(candidate_name, screening_result, career_recommendations=None):
@@ -32,7 +33,6 @@ def generate_candidate_pdf(candidate_name, screening_result, career_recommendati
 
     styles = getSampleStyleSheet()
     primary_color = colors.HexColor("#1e293b")
-    accent_color = colors.HexColor("#2563eb")
     border_color = colors.HexColor("#cbd5e1")
     text_muted = colors.HexColor("#64748b")
 
@@ -115,13 +115,15 @@ def generate_candidate_pdf(candidate_name, screening_result, career_recommendati
     story.append(t_score)
     story.append(Spacer(1, 12))
 
-    # 3. Skills Breakdown: Split Verified (1.0x/0.75x) vs Listed-Only (0.4x)
+    # 3. Skills Breakdown: 4 Distinct SSOT Tiers
     story.append(Paragraph("Skill Alignment & Evidence Verification", h2_style))
     
     req_skills = screening_result.get("required_skills", [])
     ev_levels = screening_result.get("required_skill_evidence_levels", screening_result.get("skill_evidence_levels", {}))
     
-    verified_skills = []
+    demonstrated_skills = []
+    substitute_skills = []
+    supporting_skills = []
     listed_only_skills = []
     missing_skills = []
 
@@ -129,30 +131,34 @@ def generate_candidate_pdf(candidate_name, screening_result, career_recommendati
         ev = ev_levels.get(s, {})
         status = str(ev.get("status", "missing")).strip().lower()
         disp = format_skill_display(s)
-        if status in {"demonstrated", "substitute"}:
-            if status == "substitute":
-                sub = format_skill_display(ev.get("substitute_tool", "Eq"))
-                verified_skills.append(f"{disp} (Sub: {sub})")
-            else:
-                verified_skills.append(disp)
-        elif status == "listed":
+
+        if status in {"demonstrated", "strong"}:
+            demonstrated_skills.append(disp)
+        elif status in {"substitute", "equivalent"}:
+            sub = format_skill_display(ev.get("substitute_tool", "Equivalent"))
+            substitute_skills.append(f"{disp} (Sub: {sub})")
+        elif status in {"supporting", "related"}:
+            supporting_skills.append(disp)
+        elif status in {"listed", "listed_only", "listed only"}:
             listed_only_skills.append(disp)
         else:
             missing_skills.append(s)
 
-    v_str = ", ".join(sorted(verified_skills)) if verified_skills else "None verified in project/work context."
-    l_str = ", ".join(sorted(listed_only_skills)) if listed_only_skills else "None (no unverified skills detected)."
+    v_str = ", ".join(sorted(demonstrated_skills + substitute_skills)) if (demonstrated_skills or substitute_skills) else "None verified in project/work context."
+    supp_str = ", ".join(sorted(supporting_skills)) if supporting_skills else "None (institutional/internship context)."
+    l_str = ", ".join(sorted(listed_only_skills)) if listed_only_skills else "None (skills list context)."
     
-    # Priority sorting of missing skills by JD importance
-    sorted_missing = sorted(missing_skills, key=lambda s: JD_CENTRALITY.index(s) if s in JD_CENTRALITY else 99)
+    # Sort missing skills strictly by JD Centrality priority
+    sorted_missing = sorted(missing_skills, key=lambda s: JD_CENTRALITY.index(s.lower()) if s.lower() in JD_CENTRALITY else 99)
     m_str = ", ".join(format_skill_display(s) for s in sorted_missing) if sorted_missing else "No unaddressed skill gaps."
 
     skills_table_data = [
-        [Paragraph("<b>Verified Matches (1.0x / 0.75x):</b>", bold_body), Paragraph(v_str, body_style)],
-        [Paragraph("<b>Listed Only (0.4x Partial):</b>", bold_body), Paragraph(l_str, body_style)],
+        [Paragraph("<b>Demonstrated / Sub (1.0x / 0.75x):</b>", bold_body), Paragraph(v_str, body_style)],
+        [Paragraph("<b>Supporting (0.70x):</b>", bold_body), Paragraph(supp_str, body_style)],
+        [Paragraph("<b>Listed Only (0.40x Partial):</b>", bold_body), Paragraph(l_str, body_style)],
         [Paragraph(f"<b>Unmatched Skill Gaps ({len(sorted_missing)}):</b>", bold_body), Paragraph(m_str, body_style)],
     ]
-    t_skills = Table(skills_table_data, colWidths=[170, 370])
+    t_skills = Table(skills_table_data, colWidths=[185, 355])
     t_skills.setStyle(TableStyle([
         ('BOX', (0, 0), (-1, -1), 0.5, border_color),
         ('INNERGRID', (0, 0), (-1, -1), 0.5, border_color),
@@ -163,11 +169,10 @@ def generate_candidate_pdf(candidate_name, screening_result, career_recommendati
     story.append(t_skills)
     story.append(Spacer(1, 12))
 
-    # 4. Gaps & Candidate Priority Development Areas
+    # 4. Gaps & Candidate Priority Follow-up Areas (Ranked by JD Centrality)
     story.append(Paragraph("Priority Areas for Technical Follow-up", h2_style))
     if sorted_missing:
-        # Prioritize top 3 gaps by JD importance
-        p_areas = [f"• <b>{format_skill_display(s)}</b>: Assess foundational knowledge or practical coursework exposure during screening." for s in sorted_missing[:3]]
+        p_areas = [f"• <b>{format_skill_display(s)}</b>: Core job competency not verified on resume. Validate academic coursework or practical labs during technical screening." for s in sorted_missing[:3]]
         p_text = "<br/>".join(p_areas)
     else:
         p_text = "Candidate meets all required technical competencies for the target job description. Focus interview on architectural and project depth."
