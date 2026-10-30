@@ -16,6 +16,7 @@ try:
         normalize_text,
         extract_resume_sections,
         find_contextual_skill_evidence,
+        format_skill_display,
     )
     from src.bert_category_predictor import predict_top_categories
     from src.recommendations import generate_recommendations
@@ -28,11 +29,23 @@ except ImportError:
         normalize_text,
         extract_resume_sections,
         find_contextual_skill_evidence,
+        format_skill_display,
     )
     from bert_category_predictor import predict_top_categories
     from recommendations import generate_recommendations
     from capability_engine import analyze_capabilities
-
+except ImportError:
+    from job_matcher import calculate_match_score
+    from skill_matcher import (
+        compare_skills,
+        extract_skills,
+        normalize_text,
+        extract_resume_sections,
+        find_contextual_skill_evidence,
+    )
+    from bert_category_predictor import predict_top_categories
+    from recommendations import generate_recommendations
+    from capability_engine import analyze_capabilities
 
 def calculate_skill_score(
     matched_skills,
