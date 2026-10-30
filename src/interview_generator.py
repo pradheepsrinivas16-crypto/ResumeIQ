@@ -6,6 +6,11 @@ Dynamically crafts screening questions tailored to candidate fit, gap severity, 
 from src.skill_matcher import format_skill_display
 
 BASIC_MISSING_QUESTIONS = {
+    "git": "What branching strategies (e.g., GitFlow, feature branches) and commands do you use for collaborative source control?",
+    "ci/cd": "Have you worked with any automated build or CI/CD pipelines (e.g., GitHub Actions, Jenkins) to test and deploy applications?",
+    "node.js": "How does the Node.js event-driven, non-blocking I/O model work, and when would you choose it over multi-threaded architectures?",
+    "django": "Can you explain how the Django ORM handles migrations and database relationships?",
+    "fastapi": "How does FastAPI handle dependency injection and automatic OpenAPI documentation generation?",
     "rest api": "How do you handle asynchronous HTTP responses, client-side status-code handling (e.g., 404 vs 500), and response parsing when consuming RESTful APIs?",
     "react": "Can you explain how state updates work in React, and when you would use useState versus passing props down a component hierarchy?",
     "sql": "Can you describe what relational databases you have interacted with, and what basic SELECT, WHERE, and JOIN queries you have written?",
@@ -23,9 +28,9 @@ BASIC_MISSING_QUESTIONS = {
 }
 
 JD_CENTRALITY = [
-    "rest api", "react", "sql", "power bi", "javascript", "html", "css",
-    "dashboard", "data analysis", "python", "excel", "responsive web design",
-    "ui/ux", "git", "figma", "adobe xd", "database", "exploratory data analysis",
+    "rest api", "git", "ci/cd", "node.js", "django", "fastapi", "react", "sql", "power bi",
+    "javascript", "html", "css", "dashboard", "data analysis", "python", "excel",
+    "responsive web design", "ui/ux", "figma", "adobe xd", "database", "exploratory data analysis",
     "pandas", "numpy", "kpi", "statistical analysis"
 ]
 
@@ -37,38 +42,11 @@ def generate_interview_questions(missing_skills, substituted_skills=None, suppor
     listed_skills = [str(s).strip().lower() for s in (listed_skills or [])]
     demonstrated_skills = [str(s).strip().lower() for s in (demonstrated_skills or [])]
 
-    # LOW-FIT CANDIDATE GUARD (< 35%): Ask about skills they DO list first, then central gaps
-    if final_score < 35.0:
-        # Question 1: Probe a competency they actually listed/supported
-        if "sql" in listed_skills or "database" in listed_skills:
-            questions.append({
-                "category": "Competency Verification (SQL / Database)",
-                "type": "Listed Skill Probe",
-                "question": "You list MySQL in your technical competencies: can you describe a query you wrote involving a JOIN, GROUP BY, or data aggregation?"
-            })
-        elif "python" in supporting_skills or "python" in demonstrated_skills:
-            questions.append({
-                "category": "Competency Verification (Python)",
-                "type": "Project Verification",
-                "question": "You reference Python in your projects: what specific libraries and data processing functions did you implement?"
-            })
-        
-        # Questions 2 & 3: Fundamental screening on top central missing requirements
-        sorted_gaps = sorted(missing_skills, key=lambda s: JD_CENTRALITY.index(s) if s in JD_CENTRALITY else 99)
-        for skill in sorted_gaps[:2]:
-            q_text = BASIC_MISSING_QUESTIONS.get(
-                skill,
-                f"The role specifies foundational exposure to {format_skill_display(skill)}. What coursework, academic lab, or project exposure do you have in this area?"
-            )
-            questions.append({
-                "category": f"Core Gap ({format_skill_display(skill)})",
-                "type": "Advisory Screening Question",
-                "question": q_text
-            })
-        return questions[:3]
-
-    # STANDARD CANDIDATE FLOW (>= 35%)
-    sorted_missing = sorted(missing_skills, key=lambda s: JD_CENTRALITY.index(s) if s in JD_CENTRALITY else 99)
+    # FILTER: Remove abstract database terms from missing and substitute lists
+    filtered_missing = [s for s in missing_skills if s not in {"database", "sql"}]
+    
+    # 1. Missing requirements prioritized by JD centrality
+    sorted_missing = sorted(filtered_missing, key=lambda s: JD_CENTRALITY.index(s) if s in JD_CENTRALITY else 99)
     for skill in sorted_missing[:2]:
         q_text = BASIC_MISSING_QUESTIONS.get(
             skill,
@@ -80,15 +58,31 @@ def generate_interview_questions(missing_skills, substituted_skills=None, suppor
             "question": q_text
         })
 
+    # 2. Tool transitions for concrete substitutes only
     for target_skill, sub_tool in substituted_skills.items():
         if len(questions) >= 5:
             break
+        # Guard: Never generate transitions into abstract "Database" or "SQL"
+        if target_skill in {"database", "sql", "mongodb", "mysql", "postgresql"}:
+            continue
+        
+        target_disp = format_skill_display(target_skill)
+        sub_disp = format_skill_display(sub_tool)
+        
+        if target_skill in {"tableau", "power bi"}:
+            asset_phrase = "reporting models and dashboards"
+        elif target_skill in {"figma", "adobe xd"}:
+            asset_phrase = "wireframes and design components"
+        else:
+            asset_phrase = "workflows and codebases"
+
         questions.append({
-            "category": f"Tooling Transition ({format_skill_display(sub_tool)} → {format_skill_display(target_skill)})",
+            "category": f"Tooling Transition ({sub_disp} → {target_disp})",
             "type": "Tool Adaptation",
-            "question": f"You've used {format_skill_display(sub_tool)} in projects, while our role specifies {format_skill_display(target_skill)}. How comfortable are you translating your workflow and design assets into {format_skill_display(target_skill)}?"
+            "question": f"You've used {sub_disp} in projects, while our role specifies {target_disp}. How comfortable are you translating your {asset_phrase} into {target_disp}?"
         })
 
+    # 3. Supporting skills probe
     for skill in supporting_skills:
         if len(questions) >= 5:
             break
@@ -99,9 +93,12 @@ def generate_interview_questions(missing_skills, substituted_skills=None, suppor
             "question": f"You have {disp} listed under your internship or educational experience. What specific features, interfaces, or deliverables did you build with {disp} during that period?"
         })
 
+    # 4. Listed skills probe
     for skill in listed_skills:
         if len(questions) >= 5:
             break
+        if skill in {"database", "sql"}:
+            continue
         disp = format_skill_display(skill)
         questions.append({
             "category": f"Depth Verification ({disp})",

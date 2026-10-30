@@ -10,6 +10,7 @@ DISPLAY_SKILL_NAMES = {
     "sql": "SQL",
     "mysql": "MySQL",
     "postgresql": "PostgreSQL",
+    "mongodb": "MongoDB",
     "aws": "AWS",
     "gcp": "GCP",
     "ci/cd": "CI/CD",
@@ -49,16 +50,17 @@ SKILL_ALIASES = {
     "react": ["react", "react.js", "reactjs"],
     "angular": ["angular", "angularjs", "angular.js"],
     "node.js": ["node.js", "nodejs", "node js"],
-    "rest api": ["rest api", "rest apis", "restful api", "restful apis", "rest services"],
+    "rest api": ["rest api", "rest apis", "restful api", "restful apis", "rest services", "restful"],
+    "graphql": ["graphql", "graph ql"],
     "spring boot": ["spring boot", "springboot", "spring-boot"],
     "fastapi": ["fastapi", "fast api"],
     "flask": ["flask", "flask framework"],
     "django": ["django", "django framework"],
-    "ui/ux": ["ui/ux", "ui ux", "user interface and user experience", "user interface/user experience", "user interface", "user experience"],
+    "ui/ux": ["ui/ux", "ui ux", "user interface and user experience", "user interface/user experience"],
     "responsive web design": [
         "responsive web design", "responsive web development", "responsive websites",
         "responsive web applications", "responsive web", "responsive design",
-        "responsive e-commerce", "responsive ecommerce", "responsive"
+        "responsive e-commerce", "responsive ecommerce"
     ],
     "figma": ["figma"],
     "adobe xd": ["adobe xd", "adobe experience design"],
@@ -68,12 +70,12 @@ SKILL_ALIASES = {
     "vs code": ["vs code", "visual studio code", "vscode"],
     "intellij idea": ["intellij idea", "intellij"],
     "eclipse": ["eclipse ide", "eclipse"],
-    "sql": ["sql", "structured query language", "mysql", "postgresql", "postgres", "sqlite"],
-    "database": ["database", "databases", "relational database", "relational databases", "database management", "sql", "mysql", "postgresql"],
+    "sql": ["sql", "structured query language"],
     "mysql": ["mysql", "my sql"],
     "postgresql": ["postgresql", "postgres", "postgre sql"],
     "mongodb": ["mongodb", "mongo db", "mongo"],
     "redis": ["redis"],
+    "database": ["database", "databases", "relational database", "relational databases", "database management"],
     "pandas": ["pandas"],
     "numpy": ["numpy"],
     "matplotlib": ["matplotlib"],
@@ -86,23 +88,22 @@ SKILL_ALIASES = {
     "computer vision": ["computer vision", "computer-vision", "cv"],
     "data analysis": ["data analysis", "data analytics", "data analyst"],
     "data visualization": [
-        "data visualization", "data visualizations", "data visualisation", "data visualisations",
-        "visualizations", "visualization", "visualisation", "visualising data", "visualizing data"
+        "data visualization", "data visualizations", "data visualisation", "data visualisations"
     ],
     "data cleaning": ["data cleaning", "data cleansing", "data preprocessing", "data pre-processing"],
     "exploratory data analysis": ["exploratory data analysis", "exploratory analysis", "eda"],
-    "statistical analysis": ["statistical analysis", "statistics", "statistical modelling", "statistical modeling", "statistical models"],
+    "statistical analysis": ["statistical analysis", "statistics", "statistical modelling", "statistical modeling"],
     "predictive modeling": ["predictive modeling", "predictive modelling", "predictive analytics", "random forest"],
     "model deployment": ["model deployment", "model deployments", "ml model deployment", "machine learning model deployment"],
     "mlops": ["mlops", "ml ops", "machine learning operations"],
     "model serving": ["model serving", "ml model serving"],
-    "cloud computing": ["cloud computing", "cloud", "cloud technology", "cloud technologies"],
+    "cloud computing": ["cloud computing", "cloud", "cloud technology"],
     "aws": ["aws", "amazon web services"],
     "azure": ["azure", "microsoft azure"],
     "google cloud": ["google cloud", "google cloud platform", "gcp"],
     "docker": ["docker", "docker containers", "containerization"],
     "kubernetes": ["kubernetes", "k8s"],
-    "ci/cd": ["ci/cd", "ci cd", "continuous integration", "continuous delivery"],
+    "ci/cd": ["ci/cd", "ci cd", "continuous integration", "continuous delivery", "continuous deployment"],
     "jenkins": ["jenkins"],
     "github actions": ["github actions", "github action"],
     "linux": ["linux", "ubuntu"],
@@ -113,35 +114,27 @@ SKILL_ALIASES = {
     "power bi": ["power bi", "powerbi", "microsoft power bi", "power-bi"],
     "tableau": ["tableau"],
     "dashboard": ["dashboard", "dashboards", "dashboard development", "dashboarding", "bi dashboard"],
-    "kpi": ["kpi", "kpis", "key performance indicator", "key performance indicators", "key metrics", "business metrics"],
+    "kpi": ["kpi", "kpis", "key performance indicator", "key performance indicators", "key metrics"],
     "tensorflow": ["tensorflow"],
     "pytorch": ["pytorch", "torch"],
 }
 
-RELATED_SKILLS = {
-    "machine learning": ["deep learning", "scikit-learn", "pytorch", "tensorflow", "predictive modeling"],
-    "deep learning": ["machine learning", "pytorch", "tensorflow", "computer vision", "natural language processing"],
-    "data analysis": ["pandas", "numpy", "data visualization", "statistical analysis", "data cleaning", "exploratory data analysis"],
-    "data visualization": ["matplotlib", "seaborn", "power bi", "tableau", "dashboard"],
-    "statistical analysis": ["exploratory data analysis", "data analysis", "python", "numpy", "pandas"],
-    "rest api": ["backend development", "fastapi", "flask", "node.js", "spring boot"],
-}
-
+# CONCRETE EQUIVALENT TOOLS ONLY (No circular abstract substitutions)
 EQUIVALENT_TOOL_MAP = {
-    "sql": {"mysql", "postgresql", "oracle", "sqlite", "sql server"},
-    "database": {"mysql", "postgresql", "oracle", "sqlite", "sql server", "sql", "mongodb"},
     "adobe xd": {"figma", "sketch", "invision"},
     "figma": {"adobe xd", "sketch", "invision"},
     "sketch": {"figma", "adobe xd"},
     "power bi": {"tableau", "looker", "qlik"},
     "tableau": {"power bi", "looker", "qlik"},
-    "postgresql": {"mysql", "oracle", "sqlite", "sql server", "sql"},
-    "mysql": {"postgresql", "oracle", "sqlite", "sql server", "sql"},
+    "postgresql": {"mysql", "oracle", "sqlite", "sql server"},
+    "mysql": {"postgresql", "oracle", "sqlite", "sql server"},
     "react": {"angular", "vue", "svelte"},
     "angular": {"react", "vue", "svelte"},
     "vue": {"react", "angular", "svelte"},
     "fastapi": {"flask", "django"},
     "flask": {"fastapi", "django"},
+    "gitlab": {"github", "bitbucket"},
+    "github": {"gitlab", "bitbucket"},
 }
 
 def find_equivalent_skill(target_skill, available_skills):
@@ -150,14 +143,14 @@ def find_equivalent_skill(target_skill, available_skills):
     target_clean = str(target_skill).strip().lower()
     available_set = {str(s).strip().lower() for s in available_skills}
 
+    # Strict: Abstract categories (database, sql) do not take substitute tags; they match directly
+    if target_clean in {"database", "sql"}:
+        return None
+
     if target_clean in EQUIVALENT_TOOL_MAP:
         matches = EQUIVALENT_TOOL_MAP[target_clean].intersection(available_set)
         if matches:
             return next(iter(matches))
-
-    for canonical, substitutes in EQUIVALENT_TOOL_MAP.items():
-        if canonical in available_set and target_clean in substitutes:
-            return canonical
 
     return None
 
@@ -246,7 +239,6 @@ def extract_resume_sections(text):
 MONTH_REGEX = r"\b(january|february|march|april|may|june|july|august|september|october|november|december|jan|feb|mar|apr|jun|jul|aug|sep|sept|oct|nov|dec)\b"
 
 def clean_evidence_sentence(sentence):
-    """Sanitizes snippet while preserving intra-word hyphens and joining wrapped fragments."""
     if not sentence:
         return ""
     text = str(sentence).strip()
@@ -265,7 +257,6 @@ def extract_skill_snippet(text, aliases, max_len=280):
     if not text:
         return ""
     
-    # 1. First join wrapped lines that don't start with bullet markers
     lines = text.splitlines()
     joined_blocks = []
     current_block = []
@@ -321,7 +312,6 @@ def extract_skill_snippet(text, aliases, max_len=280):
             words = set(re.findall(r"\b[a-zA-Z]+\b", unit_lower))
             has_action = bool(words.intersection(ACTION_VERBS))
             
-            # If line has parenthesized tech tags like "(Python, Web Tech)" and no action verb, categorize as header
             if ("(" in clean_unit and ")" in clean_unit) and not has_action:
                 header_units.append(clean_unit)
             elif has_action:
@@ -329,12 +319,10 @@ def extract_skill_snippet(text, aliases, max_len=280):
             else:
                 descriptive_units.append(clean_unit)
 
-    # STRICT PRIORITY: Choose action bullet sentence first, then descriptive sentence, and only header as last resort
     chosen = action_units[0] if action_units else (descriptive_units[0] if descriptive_units else (header_units[0] if header_units else ""))
     
     if chosen:
         if len(chosen) > max_len:
-            # Cut at full sentence or major punctuation
             cut = chosen[:max_len]
             punct_pos = max(cut.rfind("."), cut.rfind(";"), cut.rfind(","))
             if punct_pos > int(max_len * 0.65):
@@ -406,7 +394,6 @@ def classify_skill_evidence(resume_text, skill):
                 "confidence": 1.0,
             }
         
-        # When skill is in project header/tech tag, extract that EXACT line verbatim
         tag_snippet = ""
         for line in substantive_body.splitlines():
             line_clean = line.strip()
@@ -437,6 +424,8 @@ def classify_skill_evidence(resume_text, skill):
         }
 
     candidate_all_skills = extract_skills(resume_text)
+    
+    # Check if concrete equivalent tool exists (e.g. PostgreSQL satisfying MySQL)
     substitute_tool = find_equivalent_skill(skill, candidate_all_skills)
     if substitute_tool:
         return {
@@ -447,14 +436,21 @@ def classify_skill_evidence(resume_text, skill):
             "confidence": 0.75,
         }
 
-    if "skills" in found_sections:
-        snippet_note = "Found in Skills inventory without active project sentence context."
-        if skill in {"sql", "database"} and "mysql" in normalize_text(sections.get("skills", "")):
-            snippet_note = "Found in Skills inventory (via MySQL) without active project sentence context."
+    # If candidate has MySQL or Postgres, directly satisfy SQL and Database as Listed Only
+    if skill in {"sql", "database"} and ("mysql" in candidate_all_skills or "postgresql" in candidate_all_skills):
+        via_db = "MySQL" if "mysql" in candidate_all_skills else "PostgreSQL"
         return {
             "status": "listed",
             "sections": ["skills"],
-            "snippet": snippet_note,
+            "snippet": f"Found in Skills inventory (via {via_db}) without active project sentence context.",
+            "confidence": 0.40,
+        }
+
+    if "skills" in found_sections:
+        return {
+            "status": "listed",
+            "sections": ["skills"],
+            "snippet": "Found in Skills inventory without active project sentence context.",
             "confidence": 0.40,
         }
 
@@ -489,7 +485,6 @@ def extract_skills(text):
         if evidence:
             detected_skills.add(skill)
 
-    # In resume, if MySQL or PostgreSQL is detected, add SQL and Database to the skill inventory
     if "mysql" in detected_skills or "postgresql" in detected_skills:
         detected_skills.add("sql")
         detected_skills.add("database")
@@ -501,7 +496,7 @@ def _extract_section(text, headings):
     target = {h.lower() for h in headings}
     current = None
     collected = {h: [] for h in target}
-    stop_words = {"responsibilities", "requirements", "qualifications", "preferred skills", "required skills", "nice to have", "education", "experience"}
+    stop_words = {"responsibilities", "requirements", "qualifications", "preferred skills", "required skills", "nice to have", "education", "experience", "key requirements"}
 
     for line in lines:
         clean = re.sub(r"^[\s•\-*#●]+", "", line).strip()
@@ -523,7 +518,7 @@ def extract_job_skills(text):
     norm_text = normalize_text(text)
     detected_skills = set()
     for skill in SKILL_ALIASES:
-        # Prevent false positive: Only extract 'database' if 'database' explicitly exists in the text
+        # Prevent false positive: Only extract 'database' if explicitly mentioned
         if skill == "database" and not re.search(r"\bdatabases?\b", norm_text):
             continue
         evidence = find_skill_evidence(text, skill)
@@ -532,7 +527,7 @@ def extract_job_skills(text):
     return sorted(detected_skills)
 
 def parse_job_skill_sections(job_description):
-    required_sections = _extract_section(job_description, ["required skills", "required skill", "requirements", "required qualifications", "key requirements"])
+    required_sections = _extract_section(job_description, ["required skills", "required skill", "requirements", "required qualifications", "key requirements", "core languages"])
     preferred_sections = _extract_section(job_description, ["preferred skills", "preferred skill", "nice to have", "preferred qualifications"])
 
     required_text = "\n".join(v for v in required_sections.values() if v.strip())
@@ -549,19 +544,22 @@ def parse_job_skill_sections(job_description):
     )
     preferred_skills = [s for s in preferred_skills if s not in required_skills]
 
-    # Handle ANY-OF GROUPS: Slash delimiters and 'or' (e.g. Tableau/PowerBI, Figma or Adobe XD)
+    # Handle ANY-OF GROUPS (Slash / Or Delimiters)
     lower_jd = job_description.lower()
     
-    # BI Tools: Tableau / PowerBI
-    if ("tableau/powerbi" in lower_jd or "powerbi/tableau" in lower_jd or "tableau / power bi" in lower_jd or "tableau or power bi" in lower_jd or "power bi or tableau" in lower_jd):
+    # 1. BI Tools: Tableau / PowerBI
+    if any(p in lower_jd for p in ["tableau/powerbi", "powerbi/tableau", "tableau / power bi", "tableau or power bi", "power bi or tableau"]):
         if "tableau" in required_skills and "power bi" in required_skills:
-            # Coalesce into one single requirement: 'power bi' or 'tableau'
             required_skills.remove("tableau")
 
-    # UI Tools: Figma or Adobe XD
-    if ("figma or adobe xd" in lower_jd or "adobe xd or figma" in lower_jd or "figma/adobe xd" in lower_jd):
+    # 2. UI Tools: Figma / Adobe XD
+    if any(p in lower_jd for p in ["figma or adobe xd", "adobe xd or figma", "figma/adobe xd"]):
         if "figma" in required_skills and "adobe xd" in required_skills:
             required_skills.remove("adobe xd")
+
+    # 3. Relational DB grouping in JD: If JD asks for "PostgreSQL, MySQL, or MongoDB"
+    if "mysql" in required_skills and "postgresql" in required_skills and ("mysql or postgresql" in lower_jd or "postgresql/mysql" in lower_jd):
+        required_skills.remove("postgresql")
 
     return required_skills, preferred_skills
 
@@ -581,18 +579,6 @@ def compare_skills(resume_text, job_description):
 
     for skill in required_skills:
         ev = classify_skill_evidence(resume_text, skill)
-        
-        if ev["status"] == "missing":
-            alt = find_equivalent_skill(skill, resume_skill_set)
-            if alt:
-                ev = {
-                    "status": "substitute",
-                    "substitute_tool": alt,
-                    "sections": ["projects"],
-                    "snippet": f"Demonstrates {format_skill_display(alt)}, satisfying this requirement via industry equivalence.",
-                    "confidence": 0.75
-                }
-
         req_levels[skill] = ev
 
         if ev["status"] != "missing":
