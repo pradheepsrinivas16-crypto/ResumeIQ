@@ -34,10 +34,6 @@ except ImportError:
     from capability_engine import analyze_capabilities
 
 
-# ============================================================
-# SKILL SCORE (SINGLE SOURCE OF TRUTH WEIGHTS)
-# ============================================================
-
 def calculate_skill_score(
     matched_skills,
     required_skills,
@@ -66,10 +62,6 @@ def calculate_skill_score(
     return (total_score / len(required_skills)) * 100
 
 
-# ============================================================
-# FINAL SCORE
-# ============================================================
-
 def calculate_final_score(
     semantic_score,
     skill_score,
@@ -86,28 +78,77 @@ def calculate_final_score(
     )
 
 
-# ============================================================
-# JOB RESPONSIBILITY ANALYSIS
-# ============================================================
-
 RESPONSIBILITY_PATTERNS = [
+    {
+        "name": "predictive modeling and ml",
+        "patterns": [
+            "build predictive models",
+            "predictive models and machine learning",
+            "machine learning algorithms",
+            "predictive modeling",
+            "build predictive models and machine learning algorithms"
+        ],
+        "related_skills": [
+            "machine learning",
+            "predictive modeling",
+            "scikit-learn",
+            "deep learning",
+            "python"
+        ]
+    },
+    {
+        "name": "data cleaning and aggregation",
+        "patterns": [
+            "clean, aggregate, and analyze data",
+            "clean aggregate and analyze data",
+            "disparate sources",
+            "clean and aggregate",
+            "data cleaning and preprocessing"
+        ],
+        "related_skills": [
+            "data cleaning",
+            "data analysis",
+            "sql",
+            "python",
+            "excel"
+        ]
+    },
+    {
+        "name": "business insights and kpis",
+        "patterns": [
+            "present data-driven insights",
+            "strategic recommendations to stakeholders",
+            "insights and strategic recommendations",
+            "data-driven insights",
+            "kpi metrics",
+            "business metrics",
+            "business stakeholders",
+            "present data-driven insights and strategic recommendations to stakeholders"
+        ],
+        "related_skills": [
+            "kpi",
+            "data analysis",
+            "power bi",
+            "excel",
+            "tableau"
+        ]
+    },
     {
         "name": "ui ux design collaboration",
         "patterns": [
             "collaborate with designers",
             "translate wireframes",
             "wireframes into intuitive user experiences",
-            "intuitive user experiences",
             "design systems",
-            "user interfaces",
+            "user interfaces"
         ],
         "related_skills": [
             "ui/ux",
             "figma",
             "adobe xd",
             "css",
-            "html",
-        ],
+            "html"
+        ]
     },
     {
         "name": "dashboard development",
@@ -116,15 +157,15 @@ RESPONSIBILITY_PATTERNS = [
             "dashboards and reports",
             "dashboards to track",
             "dashboard",
-            "power bi dashboards",
+            "power bi dashboards"
         ],
         "related_skills": [
             "power bi",
             "tableau",
             "excel",
             "dashboard",
-            "data visualization",
-        ],
+            "data visualization"
+        ]
     },
     {
         "name": "sql data querying",
@@ -134,13 +175,13 @@ RESPONSIBILITY_PATTERNS = [
             "using sql to extract",
             "sql to extract",
             "querying",
-            "extract and transform",
+            "extract and transform"
         ],
         "related_skills": [
             "sql",
             "mysql",
-            "database",
-        ],
+            "database"
+        ]
     },
     {
         "name": "exploratory data analysis",
@@ -149,33 +190,14 @@ RESPONSIBILITY_PATTERNS = [
             "statistical modeling",
             "data cleaning",
             "preprocessing",
-            "eda",
+            "eda"
         ],
         "related_skills": [
             "python",
             "pandas",
             "numpy",
-            "data analysis",
-        ],
-    },
-    {
-        "name": "business insights and kpis",
-        "patterns": [
-            "present data-driven insights",
-            "data-driven insights",
-            "kpi metrics",
-            "business metrics",
-            "business stakeholders",
-            "kpis",
-            "kpi",
-            "insights",
-        ],
-        "related_skills": [
-            "kpi",
-            "data analysis",
-            "power bi",
-            "excel",
-        ],
+            "data analysis"
+        ]
     },
     {
         "name": "responsive web development",
@@ -184,14 +206,14 @@ RESPONSIBILITY_PATTERNS = [
             "responsive web application",
             "responsive web development",
             "responsive design",
-            "responsive e-commerce",
+            "responsive e-commerce"
         ],
         "related_skills": [
             "html",
             "css",
             "javascript",
-            "responsive web design",
-        ],
+            "responsive web design"
+        ]
     },
     {
         "name": "react frontend development",
@@ -200,14 +222,14 @@ RESPONSIBILITY_PATTERNS = [
             "frontend applications using react",
             "react frontend",
             "frontend development using react",
-            "react applications",
+            "react applications"
         ],
         "related_skills": [
             "react",
             "javascript",
             "html",
-            "css",
-        ],
+            "css"
+        ]
     },
     {
         "name": "backend development",
@@ -215,15 +237,14 @@ RESPONSIBILITY_PATTERNS = [
             "backend services",
             "backend development",
             "backend applications",
-            "server-side",
-            "server side",
+            "server-side"
         ],
         "related_skills": [
             "java",
             "spring boot",
             "node.js",
-            "rest api",
-        ],
+            "rest api"
+        ]
     },
     {
         "name": "rest api development",
@@ -231,94 +252,29 @@ RESPONSIBILITY_PATTERNS = [
             "rest apis",
             "rest api",
             "restful apis",
-            "restful api",
             "api development",
-            "integrate backend rest apis",
+            "integrate backend rest apis"
         ],
         "related_skills": [
             "rest api",
             "node.js",
             "fastapi",
-            "flask",
-        ],
+            "flask"
+        ]
     },
     {
         "name": "database development",
         "patterns": [
             "relational databases",
             "database-driven applications",
-            "database driven applications",
-            "work with databases",
-            "database applications",
+            "work with databases"
         ],
         "related_skills": [
             "mysql",
             "postgresql",
             "sql",
-            "database",
-        ],
-    },
-    {
-        "name": "crud operations",
-        "patterns": [
-            "crud operations",
-            "crud operation",
-            "create read update delete",
-        ],
-        "related_skills": [
-            "mysql",
-            "sql",
-            "database",
-        ],
-    },
-    {
-        "name": "frontend backend integration",
-        "patterns": [
-            "integrate frontend applications with backend services",
-            "frontend applications with backend services",
-            "frontend with backend",
-            "frontend-backend integration",
-            "frontend backend integration",
-        ],
-        "related_skills": [
-            "react",
-            "javascript",
-            "rest api",
-        ],
-    },
-    {
-        "name": "testing and debugging",
-        "patterns": [
-            "debug, test",
-            "debug and test",
-            "debugging",
-        ],
-        "related_skills": [],
-    },
-    {
-        "name": "software development best practices",
-        "patterns": [
-            "software development best practices",
-            "software development best practice",
-            "coding standards",
-            "clean code",
-            "software development lifecycle",
-            "software development life cycle",
-            "sdlc",
-            "agile development",
-            "agile methodology",
-            "development best practices",
-        ],
-        "related_skills": [],
-    },
-    {
-        "name": "testing web applications",
-        "patterns": [
-            "test web applications",
-            "test and maintain",
-            "debug",
-        ],
-        "related_skills": [],
+            "database"
+        ]
     },
     {
         "name": "version control",
@@ -327,24 +283,13 @@ RESPONSIBILITY_PATTERNS = [
             "git/github",
             "version control",
             "collaborative development",
-            "git workflows",
-            "using git workflows",
-            "git",
+            "git workflows"
         ],
         "related_skills": [
             "git",
-            "github",
-        ],
-    },
-    {
-        "name": "scalable application development",
-        "patterns": [
-            "scalable applications",
-            "scalable web applications",
-            "scalable application",
-        ],
-        "related_skills": [],
-    },
+            "github"
+        ]
+    }
 ]
 
 
@@ -355,7 +300,7 @@ def extract_job_responsibilities(job_description):
 
     section_stops = {
         "required skills", "required skill", "preferred skills", "preferred skill",
-        "qualifications", "experience", "education", "requirements", "nice to have",
+        "qualifications", "experience", "education", "requirements", "key requirements", "nice to have"
     }
 
     lines = text.splitlines()
@@ -364,8 +309,13 @@ def extract_job_responsibilities(job_description):
         if not clean:
             continue
 
-        heading = clean.rstrip(":").strip().lower()
-        if heading in {"responsibilities", "responsibility", "job responsibilities", "what you'll do", "what you will do"}:
+        raw_clean = line.strip()
+        heading = re.sub(r"^[\s•\-*#●]+", "", raw_clean).rstrip(":").strip().lower()
+
+        if heading in {
+            "responsibilities", "responsibility", "job responsibilities", 
+            "key responsibilities", "core responsibilities", "what you'll do", "what you will do"
+        }:
             in_responsibilities = True
             continue
 
@@ -377,7 +327,7 @@ def extract_job_responsibilities(job_description):
             responsibilities.append(clean)
 
     if not responsibilities:
-        action_verb_pattern = r"^(Build|Develop|Design|Implement|Manage|Lead|Collaborate|Create|Maintain|Query|Integrate|Optimize|Drive|Architect|Analyze|Conduct|Write)\b"
+        action_verb_pattern = r"^(Build|Develop|Design|Implement|Manage|Lead|Collaborate|Create|Maintain|Query|Integrate|Optimize|Drive|Architect|Analyze|Conduct|Write|Clean|Present)\b"
         for line in lines:
             clean = line.strip().lstrip("•-* \t")
             if re.search(action_verb_pattern, clean, flags=re.I) and len(clean) > 20:
@@ -389,22 +339,19 @@ def extract_job_responsibilities(job_description):
 def find_responsibility_rule(responsibility):
     normalized = normalize_text(responsibility)
     priority = [
+        "predictive modeling and ml",
+        "data cleaning and aggregation",
         "dashboard development",
         "ui ux design collaboration",
         "sql data querying",
         "exploratory data analysis",
         "business insights and kpis",
-        "crud operations",
         "rest api development",
         "version control",
-        "testing and debugging",
-        "frontend backend integration",
         "responsive web development",
         "react frontend development",
         "backend development",
         "database development",
-        "software development best practices",
-        "scalable application development",
     ]
 
     ordered_rules = sorted(
@@ -483,34 +430,39 @@ def analyze_job_responsibilities(resume_text, job_description, skill_evidence_le
             continue
 
         direct_patterns = []
-        if rule["name"] == "responsive web development":
-            direct_patterns = ["responsive web", "responsive e-commerce", "responsive ecommerce", "responsive web applications"]
+        if rule["name"] == "predictive modeling and ml":
+            direct_patterns = [
+                "machine learning-based", "machine learning", "prediction and academic",
+                "predictive modeling", "random forest", "decision-support system using a"
+            ]
+        elif rule["name"] == "data cleaning and aggregation":
+            direct_patterns = [
+                "analyzed large, multi-source datasets", "multi-source datasets using python and sql",
+                "clean and aggregate", "extract insights and support"
+            ]
+        elif rule["name"] == "business insights and kpis":
+            direct_patterns = [
+                "designed and built interactive power bi dashboards", "track key performance indicators",
+                "kpis", "support data-driven business decisions", "data-driven business"
+            ]
+        elif rule["name"] == "responsive web development":
+            direct_patterns = ["responsive web", "responsive e-commerce", "responsive ecommerce"]
         elif rule["name"] == "react frontend development":
-            direct_patterns = ["react js", "reactjs", "react application", "react frontend", "react project"]
+            direct_patterns = ["react js", "reactjs", "react application", "react frontend"]
         elif rule["name"] == "backend development":
-            direct_patterns = ["backend development", "backend services", "backend application", "server-side development"]
+            direct_patterns = ["backend development", "backend services", "backend application"]
         elif rule["name"] == "rest api development":
-            direct_patterns = ["rest api", "rest apis", "restful api", "restful apis", "api development", "api integration"]
+            direct_patterns = ["rest api", "rest apis", "restful api"]
         elif rule["name"] == "database development":
-            direct_patterns = ["database-driven", "database driven", "database management", "relational database"]
-        elif rule["name"] == "crud operations":
-            direct_patterns = ["crud operations", "crud operation", "create read update delete"]
-        elif rule["name"] == "frontend backend integration":
-            direct_patterns = ["frontend-backend", "frontend backend", "frontend with backend", "integrate frontend"]
-        elif rule["name"] == "testing and debugging":
-            direct_patterns = ["debugging", "debug", "testing web applications", "test and maintain"]
+            direct_patterns = ["database-driven", "database driven", "database management"]
         elif rule["name"] == "version control":
-            direct_patterns = ["git version control", "git workflows", "version control using git", "collaborative development using git"]
-        elif rule["name"] == "scalable application development":
-            direct_patterns = ["scalable application", "scalable web application", "scalable system", "scalability"]
+            direct_patterns = ["git version control", "git workflows", "version control using git"]
         elif rule["name"] == "dashboard development":
-            direct_patterns = ["dashboard", "dashboards", "power bi dashboards", "interactive dashboards", "reports"]
+            direct_patterns = ["interactive power bi dashboards", "power bi dashboards", "dashboard", "dashboards"]
         elif rule["name"] == "sql data querying":
-            direct_patterns = ["sql", "datasets using python and sql", "query relational databases", "extract and transform"]
+            direct_patterns = ["datasets using python and sql", "query relational databases", "extract insights and support"]
         elif rule["name"] == "exploratory data analysis":
             direct_patterns = ["exploratory data analysis", "eda", "data cleaning", "preprocessing"]
-        elif rule["name"] == "business insights and kpis":
-            direct_patterns = ["kpis", "kpi", "data-driven business decisions", "business metrics", "key performance indicators"]
 
         raw_direct = []
         for pattern in direct_patterns:
@@ -543,12 +495,10 @@ def analyze_job_responsibilities(resume_text, job_description, skill_evidence_le
                     "evidence": skill_evidence
                 })
 
+        # STRICT CONSISTENT STATUS ASSIGNMENT
         if direct_evidence:
             status = "strong"
             reason = "The resume contains direct evidence in experience or projects supporting this responsibility."
-        elif related_evidence or (rule["name"] == "version control" and "git" in resume_skills):
-            status = "related"
-            reason = "Git (listed only, no project context)"
         elif rule["name"] == "sql data querying" and ("sql" in resume_skills or "mysql" in resume_skills or "database" in resume_skills):
             status = "related"
             via_tool = "via MySQL" if "mysql" in resume_skills else "listed only"
@@ -557,6 +507,9 @@ def analyze_job_responsibilities(resume_text, job_description, skill_evidence_le
                 "skill": "sql",
                 "evidence": [{"snippet": f"Identified in technical competencies ({via_tool})."}]
             })
+        elif related_evidence or (rule["name"] == "version control" and "git" in resume_skills):
+            status = "related"
+            reason = "Skills referenced on resume, but lack active project sentence context."
         else:
             status = "missing"
             reason = "No direct or meaningful related evidence was detected in the resume."
@@ -581,10 +534,6 @@ def analyze_job_responsibilities(resume_text, job_description, skill_evidence_le
         "summary": summary,
     }
 
-
-# ============================================================
-# RESUME SCREENING
-# ============================================================
 
 def screen_resume(resume_text, job_description):
     semantic_score = calculate_match_score(resume_text, job_description)

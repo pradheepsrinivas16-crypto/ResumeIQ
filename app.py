@@ -76,6 +76,22 @@ def get_normalized_skill_evidence(skill, evidence_levels, fallback_levels=None):
             if str(k).strip().lower() == norm_skill:
                 return dict(v)
 
+    for canonical, aliases in SKILL_ALIASES.items():
+        all_forms = [canonical.strip().lower()] + [a.strip().lower() for a in aliases]
+        if norm_skill in all_forms:
+            for form in all_forms:
+                if form in levels:
+                    return dict(levels[form])
+                if fallback and form in fallback:
+                    return dict(fallback[form])
+            for k, v in levels.items():
+                if str(k).strip().lower() in all_forms:
+                    return dict(v)
+            if fallback:
+                for k, v in fallback.items():
+                    if str(k).strip().lower() in all_forms:
+                        return dict(v)
+
     return {}
 
 with st.sidebar:
@@ -387,15 +403,21 @@ if "result" in st.session_state:
     result["semantic_score"] = semantic_score
 
     candidate_label = st.session_state.get("resume_name", "Candidate")
-    career_recs_pdf = get_alternative_pathways(result.get("resume_skills", []))
-    pdf_bytes = generate_candidate_pdf(candidate_label, result, career_recs_pdf)
+    clean_candidate_title = re.sub(r"\s*\(\d+\)", "", str(candidate_label)).replace(".pdf", "")
+
+    # STRICT INVARIANCE: Career Pathways are evaluated against the global resume skills, NOT just JD skills
+    career_recs_pdf = get_alternative_pathways(
+        result.get("resume_skills", []),
+        skill_evidence_levels=skill_evidence_levels
+    )
+    pdf_bytes = generate_candidate_pdf(clean_candidate_title, result, career_recs_pdf)
 
     top_c1, top_c2 = st.columns([3, 1])
     with top_c1:
         render_html(
             f"""
             <div class="section-header" style="margin-bottom:0px;">
-                <div class="section-title">Screening Report: {candidate_label}</div>
+                <div class="section-title">Screening Report: {clean_candidate_title}</div>
                 <div class="section-description" style="color:#94a3b8;">
                     Evidence-based compatibility analysis for uploaded resume and target job.
                 </div>
@@ -407,7 +429,7 @@ if "result" in st.session_state:
         st.download_button(
             label="📄 Download Evaluation PDF",
             data=pdf_bytes,
-            file_name=f"{candidate_label}_Screening_Brief.pdf",
+            file_name=f"{clean_candidate_title}_Screening_Brief.pdf",
             mime="application/pdf",
             use_container_width=True
         )
@@ -471,7 +493,6 @@ if "result" in st.session_state:
                 )
 
             st.write("")
-            # Clean 4-Card Summary Grid
             m1, m2, m3, m4 = st.columns(4)
             with m1:
                 render_html(
@@ -554,7 +575,6 @@ if "result" in st.session_state:
             else:
                 missing.append((skill, evidence))
 
-        # Sort missing skills by JD centrality (core skills first)
         missing.sort(key=lambda item: JD_CENTRALITY.index(item[0].lower()) if item[0].lower() in JD_CENTRALITY else 99)
 
         skill_col1, skill_col2 = st.columns(2, gap="large")
@@ -857,7 +877,11 @@ if "result" in st.session_state:
     # TAB 4: CAREER & ROLE FIT
     # --------------------------------------------------------
     with tab_career:
-        career_recs = get_alternative_pathways(result.get("resume_skills", []))
+        # STRICT INVARIANCE: Career Pathways are evaluated against global candidate skills
+        career_recs = get_alternative_pathways(
+            result.get("resume_skills", []),
+            skill_evidence_levels=skill_evidence_levels
+        )
         if career_recs:
             pathways_html = "".join([
                 f"""
@@ -891,10 +915,10 @@ if "result" in st.session_state:
             )
 
         st.markdown("### 🎯 Recommended Roles (Targeted Profile Alignment)")
-        st.caption("Evidence-weighted candidate fit evaluated against structured role competency definitions.")
+        st.caption("Evidence-weighted candidate fit evaluated against standardized global role benchmark profiles (independent of target JD).")
         role_recommendations = recommend_roles(
             result.get("resume_skills", []),
-            skill_evidence_levels=result.get("skill_evidence_levels", {})
+            skill_evidence_levels=skill_evidence_levels
         )
 
         if role_recommendations:

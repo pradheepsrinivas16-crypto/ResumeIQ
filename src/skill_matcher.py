@@ -68,12 +68,12 @@ SKILL_ALIASES = {
     "vs code": ["vs code", "visual studio code", "vscode"],
     "intellij idea": ["intellij idea", "intellij"],
     "eclipse": ["eclipse ide", "eclipse"],
-    "sql": ["sql", "structured query language", "mysql", "postgresql", "postgres", "sqlite"],
+    "sql": ["sql", "structured query language"],
     "mysql": ["mysql", "my sql"],
     "postgresql": ["postgresql", "postgres", "postgre sql"],
     "mongodb": ["mongodb", "mongo db", "mongo"],
     "redis": ["redis"],
-    "database": ["database", "databases", "database management", "relational databases", "mysql", "postgresql", "sql"],
+    "database": ["database", "databases", "relational database", "relational databases", "database management"],
     "pandas": ["pandas"],
     "numpy": ["numpy"],
     "matplotlib": ["matplotlib"],
@@ -91,7 +91,7 @@ SKILL_ALIASES = {
     ],
     "data cleaning": ["data cleaning", "data cleansing", "data preprocessing", "data pre-processing"],
     "exploratory data analysis": ["exploratory data analysis", "exploratory analysis", "eda"],
-    "statistical analysis": ["statistical analysis", "statistics", "statistical modelling", "statistical modeling", "statistical models", "statistical"],
+    "statistical analysis": ["statistical analysis", "statistics", "statistical modelling", "statistical modeling", "statistical models"],
     "predictive modeling": ["predictive modeling", "predictive modelling", "predictive analytics", "random forest"],
     "model deployment": ["model deployment", "model deployments", "ml model deployment", "machine learning model deployment"],
     "mlops": ["mlops", "ml ops", "machine learning operations"],
@@ -249,7 +249,7 @@ def clean_evidence_sentence(sentence):
         return ""
     text = str(sentence).strip()
     text = re.sub(r"^(Present|Current|Date:?)\s*", "", text, flags=re.I)
-    text = re.sub(r"[\u2022\u25cf\u25cb\u25e6\u2023\u25b8●•*#]+\s*", " ", text)
+    text = re.sub(r"[\u2022\u25cf\u25cb\u25e6\u2023\u25b8●*#]+\s*", " ", text)
     text = re.sub(r"\b\d{1,2}[/-]\d{1,2}[/-]\d{2,4}\b", "", text)
     text = re.sub(MONTH_REGEX + r"\s*\d{2,4}\b", "", text, flags=re.I)
     text = re.sub(r"\b(19|20)\d{2}\s*[-–—]\s*(Present|(19|20)\d{2})\b", "", text, flags=re.I)
@@ -259,36 +259,55 @@ def clean_evidence_sentence(sentence):
     text = re.sub(r"\s+", " ", text).strip()
     return text
 
-def extract_skill_snippet(text, aliases, max_len=260):
+def extract_skill_snippet(text, aliases, max_len=280):
     if not text:
         return ""
     
-    raw_units = re.split(r"\n+|[\u2022\u25cf\u25cb\u25e6\u2023\u25b8●•]|(?<=[.!?])\s+", text)
+    # 1. First join wrapped lines that don't start with bullet markers
+    lines = text.splitlines()
+    joined_blocks = []
+    current_block = []
+
+    for line in lines:
+        l_str = line.strip()
+        if not l_str:
+            continue
+        is_bullet_start = bool(re.match(r"^[\u2022\u25cf\u25cb\u25e6\u2023\u25b8●•\-*#]", l_str))
+        if is_bullet_start and current_block:
+            joined_blocks.append(" ".join(current_block))
+            current_block = [l_str]
+        else:
+            current_block.append(l_str)
+    if current_block:
+        joined_blocks.append(" ".join(current_block))
+
+    full_text = "\n".join(joined_blocks) if joined_blocks else text
+    raw_units = re.split(r"\n+|[\u2022\u25cf\u25cb\u25e6\u2023\u25b8●•]|(?<=[.!?])\s+", full_text)
     
     ACTION_VERBS = {
         "built", "designed", "analyzed", "developed", "implemented", 
         "performed", "created", "optimized", "managed", "queried", 
         "automated", "visualize", "visualized", "track", "tracking", 
-        "conducted", "spearheaded", "engineered", "generated"
+        "conducted", "spearheaded", "engineered", "generated", "clean", "cleaned"
     }
     
     action_units = []
-    other_units = []
+    descriptive_units = []
+    header_units = []
 
     for unit in raw_units:
         clean_unit = clean_evidence_sentence(unit)
-        if len(clean_unit) < 18:
+        if len(clean_unit) < 15:
             continue
         unit_lower = clean_unit.lower()
         
-        if clean_unit.count("(") > clean_unit.count(")"):
-            continue
-
         is_metadata = any(term in unit_lower for term in [
             "novitech ltd", "technopark", "pvt ltd", "1stop remote", 
             "intern —", "intern -", "technologies ltd"
         ])
-        
+        if is_metadata:
+            continue
+
         has_alias = False
         for alias in aliases:
             pattern = r"(?<![a-zA-Z0-9])" + re.escape(alias.lower()) + r"(?![a-zA-Z0-9])"
@@ -300,15 +319,24 @@ def extract_skill_snippet(text, aliases, max_len=260):
             words = set(re.findall(r"\b[a-zA-Z]+\b", unit_lower))
             has_action = bool(words.intersection(ACTION_VERBS))
             
-            if has_action and not is_metadata:
+            # If line has parenthesized tech tags like "(Python, Web Tech)" and no action verb, categorize as header
+            if ("(" in clean_unit and ")" in clean_unit) and not has_action:
+                header_units.append(clean_unit)
+            elif has_action:
                 action_units.append(clean_unit)
-            elif not is_metadata:
-                other_units.append(clean_unit)
+            else:
+                descriptive_units.append(clean_unit)
 
-    chosen = action_units[0] if action_units else (other_units[0] if other_units else "")
+    # STRICT PRIORITY: Choose action bullet sentence first, then descriptive sentence, and only header as last resort
+    chosen = action_units[0] if action_units else (descriptive_units[0] if descriptive_units else (header_units[0] if header_units else ""))
+    
     if chosen:
         if len(chosen) > max_len:
+            # Cut at full sentence or major punctuation
             cut = chosen[:max_len]
+            punct_pos = max(cut.rfind("."), cut.rfind(";"), cut.rfind(","))
+            if punct_pos > int(max_len * 0.65):
+                return cut[:punct_pos + 1].strip()
             if " " in cut:
                 return cut.rsplit(" ", 1)[0] + "..."
             return cut + "..."
@@ -376,17 +404,18 @@ def classify_skill_evidence(resume_text, skill):
                 "confidence": 1.0,
             }
         
+        # When skill is in project header/tech tag, extract that EXACT line verbatim
         tag_snippet = ""
         for line in substantive_body.splitlines():
-            line_clean = clean_evidence_sentence(line)
+            line_clean = line.strip()
             if any(re.search(r"(?<![a-zA-Z0-9])" + re.escape(a.lower()) + r"(?![a-zA-Z0-9])", line_clean.lower()) for a in aliases):
-                tag_snippet = line_clean
+                tag_snippet = clean_evidence_sentence(line_clean)
                 break
 
         return {
             "status": "supporting",
             "sections": strong_found,
-            "snippet": tag_snippet if tag_snippet else f"Mentioned in {strong_found[0]} tech summary.",
+            "snippet": tag_snippet if tag_snippet else f"Referenced in {strong_found[0]} tech summary.",
             "confidence": 0.70,
         }
 
@@ -396,8 +425,8 @@ def classify_skill_evidence(resume_text, skill):
         substantive_body = "\n".join(sections[k] for k in supporting_found if k in sections)
         snippet = extract_skill_snippet(substantive_body, aliases)
         if not snippet:
-            lines = [clean_evidence_sentence(l) for l in substantive_body.splitlines() if clean_evidence_sentence(l)]
-            snippet = lines[0] if lines else f"Referenced in {supporting_found[0]}."
+            lines = [l.strip() for l in substantive_body.splitlines() if l.strip()]
+            snippet = clean_evidence_sentence(lines[0]) if lines else f"Referenced in {supporting_found[0]}."
         return {
             "status": "supporting",
             "sections": supporting_found,
@@ -412,14 +441,14 @@ def classify_skill_evidence(resume_text, skill):
             "status": "substitute",
             "sections": ["projects"],
             "substitute_tool": substitute_tool,
-            "snippet": f"Demonstrates {format_skill_display(substitute_tool)}, an industry-standard alternative.",
+            "snippet": f"Demonstrates {format_skill_display(substitute_tool)}, satisfying this requirement via industry equivalence.",
             "confidence": 0.75,
         }
 
     if "skills" in found_sections:
         snippet_note = "Found in Skills inventory without active project sentence context."
         if skill in {"sql", "database"} and "mysql" in normalize_text(sections.get("skills", "")):
-            snippet_note = "Found in Skills inventory via MySQL without active project sentence context."
+            snippet_note = "Found in Skills inventory (via MySQL) without active project sentence context."
         return {
             "status": "listed",
             "sections": ["skills"],
@@ -458,6 +487,11 @@ def extract_skills(text):
         if evidence:
             detected_skills.add(skill)
 
+    # In resume, if MySQL or PostgreSQL is detected, add SQL and Database to the skill inventory
+    if "mysql" in detected_skills or "postgresql" in detected_skills:
+        detected_skills.add("sql")
+        detected_skills.add("database")
+
     return sorted(detected_skills)
 
 def _extract_section(text, headings):
@@ -484,15 +518,19 @@ def _extract_section(text, headings):
     return {k: "\n".join(v) for k, v in collected.items()}
 
 def extract_job_skills(text):
+    norm_text = normalize_text(text)
     detected_skills = set()
     for skill in SKILL_ALIASES:
+        # Prevent false positive: Only extract 'database' if 'database' explicitly exists in the text
+        if skill == "database" and not re.search(r"\bdatabases?\b", norm_text):
+            continue
         evidence = find_skill_evidence(text, skill)
         if evidence:
             detected_skills.add(skill)
     return sorted(detected_skills)
 
 def parse_job_skill_sections(job_description):
-    required_sections = _extract_section(job_description, ["required skills", "required skill", "requirements", "required qualifications"])
+    required_sections = _extract_section(job_description, ["required skills", "required skill", "requirements", "required qualifications", "key requirements"])
     preferred_sections = _extract_section(job_description, ["preferred skills", "preferred skill", "nice to have", "preferred qualifications"])
 
     required_text = "\n".join(v for v in required_sections.values() if v.strip())
@@ -509,9 +547,19 @@ def parse_job_skill_sections(job_description):
     )
     preferred_skills = [s for s in preferred_skills if s not in required_skills]
 
+    # Handle ANY-OF GROUPS: Slash delimiters and 'or' (e.g. Tableau/PowerBI, Figma or Adobe XD)
     lower_jd = job_description.lower()
-    if ("figma or adobe xd" in lower_jd or "adobe xd or figma" in lower_jd) and "figma" in required_skills and "adobe xd" in required_skills:
-        required_skills.remove("adobe xd")
+    
+    # BI Tools: Tableau / PowerBI
+    if ("tableau/powerbi" in lower_jd or "powerbi/tableau" in lower_jd or "tableau / power bi" in lower_jd or "tableau or power bi" in lower_jd or "power bi or tableau" in lower_jd):
+        if "tableau" in required_skills and "power bi" in required_skills:
+            # Coalesce into one single requirement: 'power bi' or 'tableau'
+            required_skills.remove("tableau")
+
+    # UI Tools: Figma or Adobe XD
+    if ("figma or adobe xd" in lower_jd or "adobe xd or figma" in lower_jd or "figma/adobe xd" in lower_jd):
+        if "figma" in required_skills and "adobe xd" in required_skills:
+            required_skills.remove("adobe xd")
 
     return required_skills, preferred_skills
 
@@ -539,7 +587,7 @@ def compare_skills(resume_text, job_description):
                     "status": "substitute",
                     "substitute_tool": alt,
                     "sections": ["projects"],
-                    "snippet": f"Demonstrates {format_skill_display(alt)}, an industry-standard alternative.",
+                    "snippet": f"Demonstrates {format_skill_display(alt)}, satisfying this requirement via industry equivalence.",
                     "confidence": 0.75
                 }
 

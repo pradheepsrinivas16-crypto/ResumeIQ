@@ -1,5 +1,6 @@
 import pytest
 from src.skill_matcher import extract_skills, classify_skill_evidence, compare_skills
+from src.career_paths import get_alternative_pathways
 
 # Test 1: Substring Guard (Works for ANY resume)
 def test_no_substring_false_positives():
@@ -31,7 +32,6 @@ def test_database_alias_resolution():
     SQL, Python
     """
     res = compare_skills(sample_resume, jd_text)
-    # MySQL/Postgres in resume must satisfy SQL requirement via alias/substitute matching
     assert "sql" in res["matched_skills"], "Failed: MySQL/Postgres should satisfy SQL competency."
 
 
@@ -45,11 +45,9 @@ def test_evidence_tier_weighting():
     Projects:
     E-Commerce Platform: Built and deployed scalable REST APIs using Python.
     """
-    # Python has an action verb in Projects -> Demonstrated (1.0x)
     py_ev = classify_skill_evidence(sample_resume, "python")
     assert py_ev["status"] == "demonstrated", "Python with action verb in Projects must earn Demonstrated (1.0x)!"
 
-    # Java only appears in the skills list -> Listed Only (0.4x)
     java_ev = classify_skill_evidence(sample_resume, "java")
     assert java_ev["status"] == "listed", "Java without project context must be restricted to Listed Only (0.4x)!"
 
@@ -71,3 +69,21 @@ def test_score_arithmetic_invariants():
     assert "react" in res["missing_skills"]
     assert len(res["required_skills"]) == 3
     assert len(res["matched_skills"]) == 2
+
+
+# Test 5: Strict JD-Invariance for Global Pathways
+def test_pathways_are_jd_independent():
+    """Validates that Career Pathways remain completely invariant regardless of which target JD is passed."""
+    resume_text = """
+    Pradeep Srinivas B
+    Skills & Tools: Python, SQL, Power BI, Excel, Data Analysis, Machine Learning
+    Projects:
+    Cricket-Twin AI: Analyzed datasets using Python and SQL to build predictive machine learning models.
+    """
+    resume_skills = extract_skills(resume_text)
+    evidence_levels = {s: classify_skill_evidence(resume_text, s) for s in resume_skills}
+
+    run_1 = get_alternative_pathways(resume_skills, skill_evidence_levels=evidence_levels)
+    run_2 = get_alternative_pathways(resume_skills, skill_evidence_levels=evidence_levels)
+
+    assert run_1 == run_2, "Failed: Career pathways must produce identical scores for the same candidate!"

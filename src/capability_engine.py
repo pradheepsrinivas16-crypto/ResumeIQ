@@ -19,17 +19,17 @@ CAPABILITIES = {
     "backend development": {
         "display_name": "Backend Development",
         "description": "Ability to develop server-side applications, backend services and application logic.",
-        "core_skills": {"spring boot", "node.js", "fastapi", "flask", "django", "rest api"},
-        "supporting_skills": {"java", "sql", "mysql", "postgresql", "python"},
+        "core_skills": {"spring boot", "node.js", "fastapi", "flask", "django", "rest api", "java"},
+        "supporting_skills": {"sql", "mysql", "postgresql", "python"},
         "minimum_core": 1,
         "minimum_supporting": 1
     },
     "full stack development": {
         "display_name": "Full Stack Development",
         "description": "Ability to combine frontend and backend development to build complete web applications.",
-        "core_skills": {"html", "css", "javascript"},
-        "backend_core": {"spring boot", "node.js", "fastapi", "flask", "django", "rest api"},
-        "supporting_skills": {"react", "angular", "java", "mysql", "sql", "postgresql"},
+        "core_frontend": {"html", "javascript", "react", "angular", "css"},
+        "core_backend": {"spring boot", "node.js", "fastapi", "django", "java", "python", "rest api"},
+        "supporting_skills": {"sql", "mysql", "postgresql", "git"},
         "minimum_core": 2,
         "minimum_supporting": 1
     },
@@ -37,9 +37,9 @@ CAPABILITIES = {
         "display_name": "Database Development",
         "description": "Ability to work with relational databases and database-driven applications.",
         "core_skills": {"sql", "mysql", "postgresql"},
-        "supporting_skills": {"crud", "mongodb", "database", "database management", "redis"},
+        "supporting_skills": {"database", "database management", "mongodb", "redis"},
         "minimum_core": 1,
-        "minimum_supporting": 1
+        "minimum_supporting": 0
     },
     "api development": {
         "display_name": "API Development",
@@ -57,19 +57,11 @@ CAPABILITIES = {
         "minimum_core": 1,
         "minimum_supporting": 1
     },
-    "cloud development": {
-        "display_name": "Cloud Development",
-        "description": "Ability to work with cloud platforms and cloud-based application infrastructure.",
-        "core_skills": {"aws", "azure", "google cloud", "gcp"},
-        "supporting_skills": {"docker", "kubernetes", "cloud", "cloud computing"},
-        "minimum_core": 1,
-        "minimum_supporting": 1
-    },
     "version control": {
         "display_name": "Version Control",
         "description": "Ability to manage source code and collaborate using version-control platforms.",
         "core_skills": {"git", "github"},
-        "supporting_skills": {"gitlab", "bitbucket", "version control"},
+        "supporting_skills": {"gitlab", "version control"},
         "minimum_core": 1,
         "minimum_supporting": 0
     },
@@ -95,7 +87,7 @@ CAPABILITIES = {
         "core_skills": {"machine learning", "scikit-learn", "deep learning", "predictive modeling"},
         "supporting_skills": {"python", "pandas", "numpy", "tensorflow", "pytorch", "data analysis"},
         "minimum_core": 1,
-        "minimum_supporting": 2
+        "minimum_supporting": 1
     },
     "business intelligence": {
         "display_name": "Business Intelligence",
@@ -103,7 +95,7 @@ CAPABILITIES = {
         "core_skills": {"power bi", "tableau", "dashboard"},
         "supporting_skills": {"sql", "excel", "data visualization", "kpi", "data analysis"},
         "minimum_core": 1,
-        "minimum_supporting": 2
+        "minimum_supporting": 1
     },
     "data visualization": {
         "display_name": "Data Visualization",
@@ -133,8 +125,10 @@ def analyze_job_relevant_capabilities(resume_skills, job_skills, skill_evidence_
     for capability_name, capability in CAPABILITIES.items():
         core_skills = set(capability.get("core_skills", set()))
         supporting_skills = set(capability.get("supporting_skills", set()))
-        backend_core = set(capability.get("backend_core", set()))
-        capability_skills = core_skills | supporting_skills | backend_core
+        core_frontend = set(capability.get("core_frontend", set()))
+        core_backend = set(capability.get("core_backend", set()))
+        
+        capability_skills = core_skills | supporting_skills | core_frontend | core_backend
 
         relevant_job_skills = sorted(job_skills.intersection(capability_skills))
         if not relevant_job_skills:
@@ -163,26 +157,24 @@ def analyze_job_relevant_capabilities(resume_skills, job_skills, skill_evidence_
 
         missing = sorted(list(set(relevant_job_skills) - set(s.split(" (")[0] for s in matched)))
 
-        # Coverage calculation
         coverage = (earned_weight / len(relevant_job_skills) * 100) if relevant_job_skills else 0.0
 
-        # Strict Gating Rules
-        has_fullstack_core = bool(resume_skills.intersection(core_skills)) and bool(resume_skills.intersection(backend_core))
-        has_ml_core = bool(resume_skills.intersection({"machine learning", "scikit-learn", "deep learning", "predictive modeling"}))
-        has_backend_core = bool(resume_skills.intersection(core_skills))
-
-        # Single-skill handling (e.g. Version Control -> Git)
-        if len(relevant_job_skills) == 1 and coverage >= 70.0:
-            alignment = "Strong Alignment"
-        elif capability_name == "full stack development" and not has_fullstack_core:
-            alignment = "Low Alignment"
+        # GATING INVARIANTS:
+        # Full stack requires at least one frontend AND one backend skill
+        if capability_name == "full stack development":
+            has_fe = bool(resume_skills.intersection(core_frontend))
+            has_be = bool(resume_skills.intersection(core_backend))
+            if not (has_fe and has_be):
+                coverage = min(coverage, 35.0)
+                alignment = "Low Alignment"
+            else:
+                alignment = "Strong Alignment" if coverage >= 80.0 else ("Partial Alignment" if coverage >= 45.0 else "Low Alignment")
+        elif capability_name == "backend development" and not resume_skills.intersection(core_skills):
             coverage = min(coverage, 35.0)
-        elif capability_name in {"machine learning", "data science"} and not has_ml_core:
             alignment = "Low Alignment"
-            coverage = min(coverage, 40.0)
-        elif capability_name == "backend development" and not has_backend_core:
-            alignment = "Low Alignment"
-            coverage = min(coverage, 35.0)
+        elif len(relevant_job_skills) == 1:
+            # Single-skill capabilities (e.g. Version Control -> Git)
+            alignment = "Strong Alignment" if coverage >= 70.0 else ("Partial Alignment" if coverage >= 40.0 else "Low Alignment")
         else:
             if coverage >= 80.0:
                 alignment = "Strong Alignment"
@@ -193,7 +185,7 @@ def analyze_job_relevant_capabilities(resume_skills, job_skills, skill_evidence_
 
         requirement_type = (
             "Required"
-            if relevant_job_skills and set(relevant_job_skills).intersection(core_skills)
+            if relevant_job_skills and set(relevant_job_skills).intersection(core_skills | core_frontend | core_backend)
             else "Supporting"
         )
 
@@ -229,11 +221,9 @@ def analyze_capabilities(resume_skills):
         supported = (len(core_m) >= capability.get("minimum_core", 1)) and (len(supp_m) >= capability.get("minimum_supporting", 0))
 
         if capability_name == "full stack development":
-            backend_core = set(capability.get("backend_core", set()))
-            supported = supported and bool(resume_skills.intersection(core)) and bool(resume_skills.intersection(backend_core))
-
-        if capability_name in {"machine learning", "data science"}:
-            supported = supported and bool(resume_skills.intersection({"machine learning", "scikit-learn", "deep learning", "predictive modeling"}))
+            has_fe = bool(resume_skills.intersection(capability.get("core_frontend", set())))
+            has_be = bool(resume_skills.intersection(capability.get("core_backend", set())))
+            supported = has_fe and has_be
 
         results.append({
             "capability": capability.get("display_name", capability_name.title()),
