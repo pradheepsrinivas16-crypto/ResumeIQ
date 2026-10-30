@@ -1,9 +1,5 @@
 import re
 
-# ============================================================
-# CANONICAL ACRONYM & DISPLAY FORMATTER
-# ============================================================
-
 DISPLAY_SKILL_NAMES = {
     "ui/ux": "UI/UX",
     "rest api": "REST API",
@@ -27,7 +23,9 @@ DISPLAY_SKILL_NAMES = {
     "cad": "CAD",
     "seo": "SEO",
     "sem": "SEM",
-    "hris": "HRIS"
+    "hris": "HRIS",
+    "numpy": "NumPy",
+    "pandas": "Pandas"
 }
 
 def format_skill_display(name):
@@ -37,10 +35,6 @@ def format_skill_display(name):
     if norm in DISPLAY_SKILL_NAMES:
         return DISPLAY_SKILL_NAMES[norm]
     return str(name).strip().title()
-
-# ============================================================
-# PROFESSIONAL SKILL TAXONOMY
-# ============================================================
 
 SKILL_ALIASES = {
     "python": ["python", "python programming", "python 3"],
@@ -78,7 +72,7 @@ SKILL_ALIASES = {
     "postgresql": ["postgresql", "postgres", "postgre sql"],
     "mongodb": ["mongodb", "mongo db", "mongo"],
     "redis": ["redis"],
-    "database": ["database", "databases", "database management"],
+    "database": ["database", "databases", "database management", "relational databases"],
     "pandas": ["pandas"],
     "numpy": ["numpy"],
     "matplotlib": ["matplotlib"],
@@ -204,7 +198,6 @@ def normalize_text(text):
     if not text:
         return ""
     text = str(text).lower()
-    # Replace em-dashes and en-dashes with single hyphen
     text = text.replace("–", "-").replace("—", "-")
     text = re.sub(r"\s+", " ", text)
     return text.strip()
@@ -287,36 +280,30 @@ MONTH_REGEX = r"\b(january|february|march|april|may|june|july|august|september|o
 
 def clean_evidence_sentence(sentence):
     """
-    Sanitize evidence snippet:
-    - Removes dates, month names, and bullet characters.
-    - PRESERVES intra-word hyphens (e.g. 'end-to-end', 'data-driven', 'Cricket-Twin').
+    Sanitize evidence snippet while preserving intra-word hyphens:
+    - Retains: 'end-to-end', 'data-driven', 'Cricket-Twin'
+    - Removes: bullets, isolated date stamps, and leading/trailing dashes.
     """
     if not sentence:
         return ""
     text = str(sentence).strip()
-    # Strip leading marker words
     text = re.sub(r"^(Present|Current|Date:?)\s*", "", text, flags=re.I)
-    # Strip bullet glyphs but keep regular text hyphens intact
     text = re.sub(r"[\u2022\u25cf\u25cb\u25e6\u2023\u25b8●•*#]+\s*", " ", text)
-    # Strip dates like MM/DD/YYYY or DD-MM-YYYY
     text = re.sub(r"\b\d{1,2}[/-]\d{1,2}[/-]\d{2,4}\b", "", text)
-    # Strip month names with year (e.g. 'Jan 2026', 'June 2025')
     text = re.sub(MONTH_REGEX + r"\s*\d{2,4}\b", "", text, flags=re.I)
-    # Strip date ranges like '2024 - 2026' or '2024 - Present'
     text = re.sub(r"\b(19|20)\d{2}\s*[-–—]\s*(Present|(19|20)\d{2})\b", "", text, flags=re.I)
-    # Strip standalone 4-digit years
     text = re.sub(r"\b(19|20)\d{2}\b", "", text)
-    # Clean isolated standalone dashes (not surrounded by letters/numbers)
+    # Strip isolated dashes that are not connecting words
     text = re.sub(r"(?<![a-zA-Z0-9])[-–—]+(?![a-zA-Z0-9])", " ", text)
-    # Clean leading/trailing punctuation and collapse spaces
     text = re.sub(r"(^\s*[:;,.\s]+|[:;,.\s]+$)", "", text).strip()
     text = re.sub(r"\s+", " ", text).strip()
     return text
 
-def extract_skill_snippet(text, aliases, max_len=180):
+def extract_skill_snippet(text, aliases, max_len=240):
     if not text:
         return ""
-    # Split text into natural statements: by newlines, periods, or bullet glyphs
+    
+    # Split by actual bullet markers or newlines
     raw_units = re.split(r"\n+|[\u2022\u25cf\u25cb\u25e6\u2023\u25b8●•]|(?<=[.!?])\s+", text)
     
     ACTION_VERBS = {
@@ -331,14 +318,18 @@ def extract_skill_snippet(text, aliases, max_len=180):
 
     for unit in raw_units:
         clean_unit = clean_evidence_sentence(unit)
-        if len(clean_unit) < 18:
+        if len(clean_unit) < 20:
             continue
         unit_lower = clean_unit.lower()
         
-        # Avoid treating company headers / role headings as evidence
+        # Guard against unclosed parentheses (project title lines like "Detection (Python, CNN")
+        if clean_unit.count("(") > clean_unit.count(")"):
+            continue
+
+        # Guard against pure project title/company lines without action verbs
         is_metadata = any(term in unit_lower for term in [
             "novitech ltd", "technopark", "pvt ltd", "1stop remote", 
-            "intern —", "intern -", "internship at", "technologies ltd"
+            "intern —", "intern -", "technologies ltd"
         ])
         
         has_alias = False
@@ -349,7 +340,6 @@ def extract_skill_snippet(text, aliases, max_len=180):
                 break
         
         if has_alias:
-            # Check for active delivery verb
             words = set(re.findall(r"\b[a-zA-Z]+\b", unit_lower))
             has_action = bool(words.intersection(ACTION_VERBS))
             
@@ -358,11 +348,14 @@ def extract_skill_snippet(text, aliases, max_len=180):
             elif not is_metadata:
                 other_units.append(clean_unit)
 
-    # Prefer an active action sentence over a passive mention
     chosen = action_units[0] if action_units else (other_units[0] if other_units else "")
     if chosen:
         if len(chosen) > max_len:
-            return chosen[:max_len].rsplit(" ", 1)[0] + "..."
+            # Clean boundary cut
+            cut = chosen[:max_len]
+            if " " in cut:
+                return cut.rsplit(" ", 1)[0] + "..."
+            return cut + "..."
         return chosen
     return ""
 
@@ -418,11 +411,19 @@ def classify_skill_evidence(resume_text, skill):
     if strong_found:
         substantive_body = "\n".join(v for k, v in sections.items() if k in strong_sections)
         snippet = extract_skill_snippet(substantive_body, aliases)
+        if snippet:
+            return {
+                "status": "demonstrated",
+                "sections": strong_found,
+                "snippet": snippet,
+                "confidence": 1.0,
+            }
+        # If mentioned in projects but strictly in heading/tech-list, downgrade to supporting
         return {
-            "status": "demonstrated",
+            "status": "supporting",
             "sections": strong_found,
-            "snippet": snippet if snippet else f"Demonstrated {skill} in project work.",
-            "confidence": 1.0,
+            "snippet": f"Mentioned in {strong_found[0]} tech list without active sentence context.",
+            "confidence": 0.70,
         }
 
     candidate_all_skills = extract_skills(resume_text)
