@@ -374,9 +374,8 @@ def extract_job_responsibilities(job_description):
         if in_responsibilities:
             responsibilities.append(clean)
 
-    # Paragraph JD fallback: extract lines starting with common engineering action verbs
     if not responsibilities:
-        action_verb_pattern = r"^(Build|Develop|Design|Implement|Manage|Lead|Collaborate|Create|Maintain|Query|Integrate|Optimize|Drive|Architect|Analyze)\b"
+        action_verb_pattern = r"^(Build|Develop|Design|Implement|Manage|Lead|Collaborate|Create|Maintain|Query|Integrate|Optimize|Drive|Architect|Analyze|Conduct)\b"
         for line in lines:
             clean = line.strip().lstrip("•-* \t")
             if re.search(action_verb_pattern, clean, flags=re.I) and len(clean) > 20:
@@ -456,10 +455,11 @@ def _build_substantive_resume_text(resume_text):
     return "\n".join(output)
 
 
-def analyze_job_responsibilities(resume_text, job_description):
+def analyze_job_responsibilities(resume_text, job_description, skill_evidence_levels=None):
     responsibilities = extract_job_responsibilities(job_description)
     evidence_text = _build_substantive_resume_text(resume_text)
     normalized_resume = normalize_text(evidence_text)
+    ev_levels = skill_evidence_levels or {}
 
     try:
         resume_skills = set(extract_skills(resume_text))
@@ -543,8 +543,20 @@ def analyze_job_responsibilities(resume_text, job_description):
                 })
 
         if direct_evidence:
-            status = "strong"
-            reason = "The resume contains direct evidence in experience or projects supporting this responsibility."
+            # CHECK GATING: If the matched line explicitly mentions tools like Pandas or NumPy that are only 'listed', downgrade status
+            lower_resp = responsibility.lower()
+            if ("pandas" in lower_resp or "numpy" in lower_resp or "statistical modeling" in lower_resp):
+                pandas_status = str(ev_levels.get("pandas", {}).get("status", "")).lower()
+                numpy_status = str(ev_levels.get("numpy", {}).get("status", "")).lower()
+                if pandas_status == "listed" or numpy_status == "listed":
+                    status = "related"
+                    reason = "Candidate has relevant data preprocessing experience, but specific statistical/modeling libraries (Pandas/NumPy) are listed only without dedicated modeling bullet points."
+                else:
+                    status = "strong"
+                    reason = "The resume contains direct evidence in experience or projects supporting this responsibility."
+            else:
+                status = "strong"
+                reason = "The resume contains direct evidence in experience or projects supporting this responsibility."
         elif related_evidence:
             status = "related"
             reason = "The resume contains related skills, but does not explicitly demonstrate the full responsibility."
@@ -616,7 +628,11 @@ def screen_resume(resume_text, job_description):
     )
 
     capability_results = analyze_capabilities(skill_result["resume_skills"])
-    responsibility_analysis = analyze_job_responsibilities(resume_text, job_description)
+    responsibility_analysis = analyze_job_responsibilities(
+        resume_text,
+        job_description,
+        skill_evidence_levels=ssot_evidence_levels
+    )
 
     return {
         "final_score": final_score,
