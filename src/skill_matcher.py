@@ -1,5 +1,9 @@
 import re
 
+# ============================================================
+# CANONICAL ACRONYM & DISPLAY FORMATTER
+# ============================================================
+
 DISPLAY_SKILL_NAMES = {
     "ui/ux": "UI/UX",
     "rest api": "REST API",
@@ -35,6 +39,10 @@ def format_skill_display(name):
     if norm in DISPLAY_SKILL_NAMES:
         return DISPLAY_SKILL_NAMES[norm]
     return str(name).strip().title()
+
+# ============================================================
+# PROFESSIONAL SKILL TAXONOMY
+# ============================================================
 
 SKILL_ALIASES = {
     "python": ["python", "python programming", "python 3"],
@@ -198,7 +206,6 @@ def normalize_text(text):
     if not text:
         return ""
     text = str(text).lower()
-    # Normalize em-dashes and en-dashes to single hyphen without destroying intra-word hyphens
     text = text.replace("–", "-").replace("—", "-")
     text = re.sub(r"\s+", " ", text)
     return text.strip()
@@ -280,11 +287,7 @@ def extract_resume_sections(text):
 MONTH_REGEX = r"\b(january|february|march|april|may|june|july|august|september|october|november|december|jan|feb|mar|apr|jun|jul|aug|sep|sept|oct|nov|dec)\b"
 
 def clean_evidence_sentence(sentence):
-    """
-    Sanitizes snippet:
-    - Removes date ranges, month names, and bullet characters.
-    - PRESERVES intra-word hyphens (e.g. 'E-cart', 'e-commerce', 'end-to-end', 'data-driven').
-    """
+    """Sanitizes snippet while preserving intra-word hyphens."""
     if not sentence:
         return ""
     text = str(sentence).strip()
@@ -294,7 +297,6 @@ def clean_evidence_sentence(sentence):
     text = re.sub(MONTH_REGEX + r"\s*\d{2,4}\b", "", text, flags=re.I)
     text = re.sub(r"\b(19|20)\d{2}\s*[-–—]\s*(Present|(19|20)\d{2})\b", "", text, flags=re.I)
     text = re.sub(r"\b(19|20)\d{2}\b", "", text)
-    # Strip isolated dashes that are NOT part of a compound word
     text = re.sub(r"(?<![a-zA-Z0-9])[-–—]+(?![a-zA-Z0-9])", " ", text)
     text = re.sub(r"(^\s*[:;,.\s]+|[:;,.\s]+$)", "", text).strip()
     text = re.sub(r"\s+", " ", text).strip()
@@ -304,7 +306,6 @@ def extract_skill_snippet(text, aliases, max_len=240):
     if not text:
         return ""
     
-    # Split text by bullet markers or newlines
     raw_units = re.split(r"\n+|[\u2022\u25cf\u25cb\u25e6\u2023\u25b8●•]|(?<=[.!?])\s+", text)
     
     ACTION_VERBS = {
@@ -323,11 +324,9 @@ def extract_skill_snippet(text, aliases, max_len=240):
             continue
         unit_lower = clean_unit.lower()
         
-        # Avoid lines with unclosed parentheses (often truncated headers)
         if clean_unit.count("(") > clean_unit.count(")"):
             continue
 
-        # Filter out company/organization headers
         is_metadata = any(term in unit_lower for term in [
             "novitech ltd", "technopark", "pvt ltd", "1stop remote", 
             "intern —", "intern -", "technologies ltd"
@@ -358,6 +357,35 @@ def extract_skill_snippet(text, aliases, max_len=240):
             return cut + "..."
         return chosen
     return ""
+
+def find_contextual_skill_evidence(resume_text, skill):
+    """Extracts contextual evidence for a skill across substantive resume sections."""
+    sections = extract_resume_sections(resume_text)
+    aliases = SKILL_ALIASES.get(skill, [skill])
+    evidence = []
+
+    for section_name in ["projects", "experience", "internship", "certifications", "education", "skills"]:
+        section_text = sections.get(section_name, "")
+        if not section_text.strip():
+            continue
+
+        normalized_section = normalize_text(section_text)
+        for alias in aliases:
+            alias_norm = normalize_text(alias)
+            pattern = r"(?<![a-zA-Z0-9])" + re.escape(alias_norm) + r"(?![a-zA-Z0-9])"
+            if re.search(pattern, normalized_section):
+                snippet = extract_skill_snippet(section_text, aliases)
+                evidence.append({
+                    "section": section_name,
+                    "evidence": alias,
+                    "snippet": snippet if snippet else f"Verified {format_skill_display(alias)} in {section_name}.",
+                    "strength": SECTION_STRENGTH.get(section_name, "supporting"),
+                })
+                break
+        if evidence:
+            break
+
+    return evidence
 
 def classify_skill_evidence(resume_text, skill):
     sections = extract_resume_sections(resume_text)
@@ -390,7 +418,6 @@ def classify_skill_evidence(resume_text, skill):
                 "snippet": snippet,
                 "confidence": 1.0,
             }
-        # If in projects/experience without an action verb (tech list or header), assign supporting
         return {
             "status": "supporting",
             "sections": strong_found,
@@ -398,7 +425,6 @@ def classify_skill_evidence(resume_text, skill):
             "confidence": 0.70,
         }
 
-    # Supporting sections: internship, certifications, education
     supporting_sections = {"internship", "certifications", "education"}
     supporting_found = [s for s in found_sections if s in supporting_sections]
     if supporting_found:
@@ -527,10 +553,9 @@ def parse_job_skill_sections(job_description):
     )
     preferred_skills = [s for s in preferred_skills if s not in required_skills]
 
-    # Resolve "Figma or Adobe XD" "or" patterns: If JD mentions "Figma or Adobe XD", coalesce them into one requirement
+    # Resolve "Figma or Adobe XD" coalescing
     lower_jd = job_description.lower()
     if ("figma or adobe xd" in lower_jd or "adobe xd or figma" in lower_jd) and "figma" in required_skills and "adobe xd" in required_skills:
-        # Keep Figma as canonical requirement and treat Adobe XD as alternative
         required_skills.remove("adobe xd")
 
     return required_skills, preferred_skills
@@ -550,10 +575,8 @@ def compare_skills(resume_text, job_description):
     req_levels = {}
 
     for skill in required_skills:
-        # Check direct or alias evidence
         ev = classify_skill_evidence(resume_text, skill)
         
-        # Check alternative OR groups (e.g., Figma satisfies Adobe XD requirement)
         if ev["status"] == "missing":
             alt = find_equivalent_skill(skill, resume_skill_set)
             if alt:
