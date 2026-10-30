@@ -28,7 +28,13 @@ st.set_page_config(
 
 apply_custom_css()
 
-MONTH_REGEX = r"\b(january|february|march|april|may|june|july|august|september|october|november|december|jan|feb|mar|apr|jun|jul|aug|sep|sept|oct|nov|dec)\b"
+# Centrality ordering for skills display
+JD_CENTRALITY = [
+    "rest api", "react", "sql", "power bi", "javascript", "html", "css",
+    "dashboard", "data analysis", "python", "excel", "responsive web design",
+    "ui/ux", "git", "figma", "adobe xd", "database", "exploratory data analysis",
+    "pandas", "numpy", "kpi", "statistical analysis"
+]
 
 def clean_snippet_text(raw_text):
     if not raw_text:
@@ -37,13 +43,10 @@ def clean_snippet_text(raw_text):
     text = re.sub(r"^(Present|Current|Date:?)\s*", "", text, flags=re.I)
     text = re.sub(r"[\u2022\u25cf\u25cb\u25e6\u2023\u25b8●•*#]+\s*", " ", text)
     text = re.sub(r"\b\d{1,2}[/-]\d{1,2}[/-]\d{2,4}\b", "", text)
-    text = re.sub(MONTH_REGEX + r"\s*\d{2,4}\b", "", text, flags=re.I)
-    text = re.sub(r"\b(19|20)\d{2}\s*[-–—]\s*(Present|(19|20)\d{2})\b", "", text, flags=re.I)
-    text = re.sub(r"\b(19|20)\d{2}\b", "", text)
     text = re.sub(r"(?<![a-zA-Z0-9])[-–—]+(?![a-zA-Z0-9])", " ", text)
     text = re.sub(r"[\s–—\-:]+$", "", text).strip()
     text = re.sub(r"\s+", " ", text).strip().lstrip("•-* ")
-    return text[:240] + "..." if len(text) > 240 else text
+    return text[:260] + "..." if len(text) > 260 else text
 
 def get_normalized_skill_evidence(skill, evidence_levels, fallback_levels=None):
     if not skill:
@@ -72,22 +75,6 @@ def get_normalized_skill_evidence(skill, evidence_levels, fallback_levels=None):
         for k, v in fallback.items():
             if str(k).strip().lower() == norm_skill:
                 return dict(v)
-
-    for canonical, aliases in SKILL_ALIASES.items():
-        all_forms = [canonical.strip().lower()] + [a.strip().lower() for a in aliases]
-        if norm_skill in all_forms:
-            for form in all_forms:
-                if form in levels:
-                    return dict(levels[form])
-                if fallback and form in fallback:
-                    return dict(fallback[form])
-            for k, v in levels.items():
-                if str(k).strip().lower() in all_forms:
-                    return dict(v)
-            if fallback:
-                for k, v in fallback.items():
-                    if str(k).strip().lower() in all_forms:
-                        return dict(v)
 
     return {}
 
@@ -567,6 +554,9 @@ if "result" in st.session_state:
             else:
                 missing.append((skill, evidence))
 
+        # Sort missing skills by JD centrality (core skills first)
+        missing.sort(key=lambda item: JD_CENTRALITY.index(item[0].lower()) if item[0].lower() in JD_CENTRALITY else 99)
+
         skill_col1, skill_col2 = st.columns(2, gap="large")
         with skill_col1:
             st.markdown("### ✅ Matched Competencies")
@@ -662,7 +652,7 @@ if "result" in st.session_state:
                             <div style="margin-top:8px; padding:8px 12px; background:rgba(251, 191, 36, 0.08); border-left:3px solid #fbbf24; border-radius:4px; font-style:italic; font-size:12.5px; color:#cbd5e1;">
                                 "{snippet}"
                             </div>
-                            """ if snippet else "<div style='font-size:12px; color:#94a3b8; margin-top:4px;'>Institutional/internship reference context.</div>"
+                            """ if snippet else f"<div style='font-size:12.5px; color:#cbd5e1; margin-top:4px;'>Verified in {section_text} records.</div>"
 
                             render_html(
                                 f"""
@@ -875,7 +865,7 @@ if "result" in st.session_state:
                     <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
                         <strong style="color: #60a5fa; font-size: 1.05rem;">{p['role']}</strong>
                         <span style="background: rgba(59, 130, 246, 0.18); color: #93c5fd; padding: 3px 10px; border-radius: 999px; font-size: 0.85rem; font-weight: 700;">
-                            {p['fit']}% Universal Skill Transferability
+                            {p['fit']}% Market Skill Overlap
                         </span>
                     </div>
                     <div style="font-size: 0.85rem; color: #cbd5e1;">
@@ -889,10 +879,10 @@ if "result" in st.session_state:
                 f"""
                 <div style="margin-top: 10px; margin-bottom: 24px; padding: 20px; border-radius: 18px; background: rgba(15, 23, 42, 0.7); border: 1px solid #1e293b;">
                     <div style="font-size: 1.15rem; font-weight: 800; color: #f8fafc; margin-bottom: 4px; display: flex; align-items: center; gap: 8px;">
-                        <span>🧭</span> Cross-Functional Career Pathways (JD-Independent Market Transferability)
+                        <span>🧭</span> Cross-Functional Career Pathways (Broad Market Transferability)
                     </div>
                     <div style="font-size: 0.82rem; color: #94a3b8; margin-bottom: 16px;">
-                        Evaluates overall candidate skills against global market role profiles (independent of target JD).
+                        Measures JD-independent market skill transferability against global engineering and data families.
                     </div>
                     {pathways_html}
                 </div>
@@ -900,7 +890,8 @@ if "result" in st.session_state:
                 unsafe_allow_html=True
             )
 
-        st.markdown("### 🎯 Recommended Roles (Based on Verified Resume Skills)")
+        st.markdown("### 🎯 Recommended Roles (Targeted Profile Alignment)")
+        st.caption("Evidence-weighted candidate fit evaluated against structured role competency definitions.")
         role_recommendations = recommend_roles(
             result.get("resume_skills", []),
             skill_evidence_levels=result.get("skill_evidence_levels", {})

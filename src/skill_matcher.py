@@ -1,9 +1,5 @@
 import re
 
-# ============================================================
-# CANONICAL ACRONYM & DISPLAY FORMATTER
-# ============================================================
-
 DISPLAY_SKILL_NAMES = {
     "ui/ux": "UI/UX",
     "rest api": "REST API",
@@ -40,10 +36,6 @@ def format_skill_display(name):
         return DISPLAY_SKILL_NAMES[norm]
     return str(name).strip().title()
 
-# ============================================================
-# PROFESSIONAL SKILL TAXONOMY
-# ============================================================
-
 SKILL_ALIASES = {
     "python": ["python", "python programming", "python 3"],
     "java": ["java", "java programming", "core java"],
@@ -55,6 +47,7 @@ SKILL_ALIASES = {
     "html": ["html", "html5", "hypertext markup language"],
     "css": ["css", "css3", "cascading style sheets"],
     "react": ["react", "react.js", "reactjs"],
+    "angular": ["angular", "angularjs", "angular.js"],
     "node.js": ["node.js", "nodejs", "node js"],
     "rest api": ["rest api", "rest apis", "restful api", "restful apis", "rest services"],
     "spring boot": ["spring boot", "springboot", "spring-boot"],
@@ -75,12 +68,12 @@ SKILL_ALIASES = {
     "vs code": ["vs code", "visual studio code", "vscode"],
     "intellij idea": ["intellij idea", "intellij"],
     "eclipse": ["eclipse ide", "eclipse"],
-    "sql": ["sql", "structured query language"],
+    "sql": ["sql", "structured query language", "mysql", "postgresql", "postgres", "sqlite"],
     "mysql": ["mysql", "my sql"],
     "postgresql": ["postgresql", "postgres", "postgre sql"],
     "mongodb": ["mongodb", "mongo db", "mongo"],
     "redis": ["redis"],
-    "database": ["database", "databases", "database management", "relational databases"],
+    "database": ["database", "databases", "database management", "relational databases", "mysql", "postgresql", "sql"],
     "pandas": ["pandas"],
     "numpy": ["numpy"],
     "matplotlib": ["matplotlib"],
@@ -99,68 +92,37 @@ SKILL_ALIASES = {
     "data cleaning": ["data cleaning", "data cleansing", "data preprocessing", "data pre-processing"],
     "exploratory data analysis": ["exploratory data analysis", "exploratory analysis", "eda"],
     "statistical analysis": ["statistical analysis", "statistics", "statistical modelling", "statistical modeling", "statistical models", "statistical"],
-    "predictive modeling": ["predictive modeling", "predictive modelling", "predictive analytics"],
-    "model deployment": ["model deployment", "model deployments", "ml model deployment", "machine learning model deployment", "deploying models", "deployment of models"],
-    "mlops": ["mlops", "ml ops", "machine learning operations", "machine-learning operations"],
-    "model serving": ["model serving", "ml model serving", "machine learning model serving"],
+    "predictive modeling": ["predictive modeling", "predictive modelling", "predictive analytics", "random forest"],
+    "model deployment": ["model deployment", "model deployments", "ml model deployment", "machine learning model deployment"],
+    "mlops": ["mlops", "ml ops", "machine learning operations"],
+    "model serving": ["model serving", "ml model serving"],
     "cloud computing": ["cloud computing", "cloud", "cloud technology", "cloud technologies"],
     "aws": ["aws", "amazon web services"],
     "azure": ["azure", "microsoft azure"],
     "google cloud": ["google cloud", "google cloud platform", "gcp"],
-    "docker": ["docker", "docker containers", "containerization", "containerisation"],
+    "docker": ["docker", "docker containers", "containerization"],
     "kubernetes": ["kubernetes", "k8s"],
-    "ci/cd": ["ci/cd", "ci cd", "continuous integration", "continuous delivery", "continuous deployment"],
+    "ci/cd": ["ci/cd", "ci cd", "continuous integration", "continuous delivery"],
     "jenkins": ["jenkins"],
     "github actions": ["github actions", "github action"],
     "linux": ["linux", "ubuntu"],
-    "git": ["git", "git version control", "version control", "git workflows", "git workflow", "github", "gitlab", "github workflows", "collaborative development"],
+    "git": ["git", "git version control", "version control", "git workflows", "git workflow"],
     "github": ["github", "git hub"],
     "gitlab": ["gitlab", "git lab"],
     "excel": ["excel", "microsoft excel", "ms excel"],
     "power bi": ["power bi", "powerbi", "microsoft power bi", "power-bi"],
     "tableau": ["tableau"],
-    "dashboard": ["dashboard", "dashboards", "dashboard development", "dashboarding", "bi dashboard", "bi dashboards"],
-    "kpi": ["kpi", "kpis", "key performance indicator", "key performance indicators", "key metrics", "business metrics", "player metrics"],
+    "dashboard": ["dashboard", "dashboards", "dashboard development", "dashboarding", "bi dashboard"],
+    "kpi": ["kpi", "kpis", "key performance indicator", "key performance indicators", "key metrics", "business metrics"],
     "tensorflow": ["tensorflow"],
     "pytorch": ["pytorch", "torch"],
-    "opencv": ["opencv", "open cv"],
-    "graphql": ["graphql", "graph ql"],
-    "spark": ["spark", "apache spark", "pyspark"],
-    "hadoop": ["hadoop", "apache hadoop"],
-    "mechanical engineering": ["mechanical engineering", "mechanical engineer"],
-    "autocad": ["autocad", "auto cad"],
-    "solidworks": ["solidworks", "solid works"],
-    "catia": ["catia"],
-    "cad": ["cad", "computer aided design", "computer-aided design"],
-    "3d modeling": ["3d modeling", "3d modelling", "3d model", "3d cad"],
-    "gd&t": ["gd&t", "geometric dimensioning and tolerancing", "geometric dimensioning", "dimensioning and tolerancing"],
-    "manufacturing": ["manufacturing", "manufacturing processes", "manufacturing process"],
-    "engineering drawings": ["engineering drawings", "engineering drawing", "technical drawings", "technical drawing"],
-    "mechanical design": ["mechanical design", "mechanical component design", "component design"],
-    "financial analysis": ["financial analysis", "financial analyst"],
-    "financial modeling": ["financial modeling", "financial modelling", "financial model"],
-    "accounting": ["accounting", "accountancy"],
-    "financial reporting": ["financial reporting", "financial reports"],
-    "digital marketing": ["digital marketing", "online marketing"],
-    "seo": ["seo", "search engine optimization", "search engine optimisation"],
-    "sem": ["sem", "search engine marketing"],
-    "google analytics": ["google analytics", "ga4"],
-    "social media marketing": ["social media marketing", "social media management"],
-    "recruitment": ["recruitment", "recruiting", "recruiter"],
-    "talent acquisition": ["talent acquisition", "talent management"],
-    "payroll": ["payroll", "payroll management"],
-    "employee relations": ["employee relations"],
-    "hris": ["hris", "human resources information system"],
 }
 
 RELATED_SKILLS = {
     "machine learning": ["deep learning", "scikit-learn", "pytorch", "tensorflow", "predictive modeling"],
     "deep learning": ["machine learning", "pytorch", "tensorflow", "computer vision", "natural language processing"],
-    "computer vision": ["opencv", "deep learning", "pytorch", "tensorflow"],
-    "natural language processing": ["machine learning", "deep learning"],
     "data analysis": ["pandas", "numpy", "data visualization", "statistical analysis", "data cleaning", "exploratory data analysis"],
     "data visualization": ["matplotlib", "seaborn", "power bi", "tableau", "dashboard"],
-    "model deployment": ["mlops", "model serving", "machine learning"],
     "statistical analysis": ["exploratory data analysis", "data analysis", "python", "numpy", "pandas"],
     "rest api": ["backend development", "fastapi", "flask", "node.js", "spring boot"],
 }
@@ -173,16 +135,11 @@ EQUIVALENT_TOOL_MAP = {
     "tableau": {"power bi", "looker", "qlik"},
     "postgresql": {"mysql", "oracle", "sqlite", "sql server"},
     "mysql": {"postgresql", "oracle", "sqlite", "sql server"},
-    "aws": {"azure", "gcp", "google cloud"},
-    "gcp": {"aws", "azure", "google cloud"},
-    "azure": {"aws", "gcp", "google cloud"},
-    "pytorch": {"tensorflow", "keras"},
-    "tensorflow": {"pytorch", "keras"},
-    "react": {"vue", "angular", "svelte"},
+    "react": {"angular", "vue", "svelte"},
+    "angular": {"react", "vue", "svelte"},
     "vue": {"react", "angular", "svelte"},
     "fastapi": {"flask", "django"},
     "flask": {"fastapi", "django"},
-    "docker": {"podman", "containerization"},
 }
 
 def find_equivalent_skill(target_skill, available_skills):
@@ -287,7 +244,7 @@ def extract_resume_sections(text):
 MONTH_REGEX = r"\b(january|february|march|april|may|june|july|august|september|october|november|december|jan|feb|mar|apr|jun|jul|aug|sep|sept|oct|nov|dec)\b"
 
 def clean_evidence_sentence(sentence):
-    """Sanitizes snippet while preserving intra-word hyphens."""
+    """Sanitizes snippet while preserving intra-word hyphens and joining wrapped fragments."""
     if not sentence:
         return ""
     text = str(sentence).strip()
@@ -297,15 +254,17 @@ def clean_evidence_sentence(sentence):
     text = re.sub(MONTH_REGEX + r"\s*\d{2,4}\b", "", text, flags=re.I)
     text = re.sub(r"\b(19|20)\d{2}\s*[-–—]\s*(Present|(19|20)\d{2})\b", "", text, flags=re.I)
     text = re.sub(r"\b(19|20)\d{2}\b", "", text)
+    # Strip isolated dashes that are NOT connecting words
     text = re.sub(r"(?<![a-zA-Z0-9])[-–—]+(?![a-zA-Z0-9])", " ", text)
     text = re.sub(r"(^\s*[:;,.\s]+|[:;,.\s]+$)", "", text).strip()
     text = re.sub(r"\s+", " ", text).strip()
     return text
 
-def extract_skill_snippet(text, aliases, max_len=240):
+def extract_skill_snippet(text, aliases, max_len=260):
     if not text:
         return ""
     
+    # Split text by bullet markers, newlines, or sentence boundaries
     raw_units = re.split(r"\n+|[\u2022\u25cf\u25cb\u25e6\u2023\u25b8●•]|(?<=[.!?])\s+", text)
     
     ACTION_VERBS = {
@@ -320,10 +279,11 @@ def extract_skill_snippet(text, aliases, max_len=240):
 
     for unit in raw_units:
         clean_unit = clean_evidence_sentence(unit)
-        if len(clean_unit) < 20:
+        if len(clean_unit) < 18:
             continue
         unit_lower = clean_unit.lower()
         
+        # Guard against truncated titles with unclosed parentheses
         if clean_unit.count("(") > clean_unit.count(")"):
             continue
 
@@ -343,6 +303,7 @@ def extract_skill_snippet(text, aliases, max_len=240):
             words = set(re.findall(r"\b[a-zA-Z]+\b", unit_lower))
             has_action = bool(words.intersection(ACTION_VERBS))
             
+            # Prefer substantive bullet sentences over title/tech-list tags
             if has_action and not is_metadata:
                 action_units.append(clean_unit)
             elif not is_metadata:
@@ -359,11 +320,11 @@ def extract_skill_snippet(text, aliases, max_len=240):
     return ""
 
 def find_contextual_skill_evidence(resume_text, skill):
-    """Extracts contextual evidence for a skill across substantive resume sections."""
     sections = extract_resume_sections(resume_text)
     aliases = SKILL_ALIASES.get(skill, [skill])
     evidence = []
 
+    # Exclude contact, profile, and hobbies to avoid false matches
     for section_name in ["projects", "experience", "internship", "certifications", "education", "skills"]:
         section_text = sections.get(section_name, "")
         if not section_text.strip():
@@ -378,7 +339,7 @@ def find_contextual_skill_evidence(resume_text, skill):
                 evidence.append({
                     "section": section_name,
                     "evidence": alias,
-                    "snippet": snippet if snippet else f"Verified {format_skill_display(alias)} in {section_name}.",
+                    "snippet": snippet if snippet else f"Referenced {format_skill_display(alias)} in {section_name}.",
                     "strength": SECTION_STRENGTH.get(section_name, "supporting"),
                 })
                 break
@@ -392,8 +353,10 @@ def classify_skill_evidence(resume_text, skill):
     aliases = SKILL_ALIASES.get(skill, [skill])
     found_sections = []
 
-    for section_name, section_text in sections.items():
-        if section_name in {"contact", "soft_skills"} or not section_text.strip():
+    # STRICT RULE: Never look for skills in contact or hobbies sections!
+    for section_name in ["skills", "projects", "experience", "internship", "certifications", "education"]:
+        section_text = sections.get(section_name, "")
+        if not section_text.strip():
             continue
 
         normalized_section = normalize_text(section_text)
@@ -421,19 +384,24 @@ def classify_skill_evidence(resume_text, skill):
         return {
             "status": "supporting",
             "sections": strong_found,
-            "snippet": "",
+            "snippet": f"Mentioned in {strong_found[0]} tech summary without dedicated action sentence.",
             "confidence": 0.70,
         }
 
+    # Supporting sections: internship, certifications, education
     supporting_sections = {"internship", "certifications", "education"}
     supporting_found = [s for s in found_sections if s in supporting_sections]
     if supporting_found:
         substantive_body = "\n".join(sections[k] for k in supporting_found if k in sections)
         snippet = extract_skill_snippet(substantive_body, aliases)
+        if not snippet:
+            # Fall back to the first non-empty line of that section (e.g. role title)
+            lines = [l.strip() for l in substantive_body.splitlines() if l.strip()]
+            snippet = lines[0] if lines else f"Referenced in {supporting_found[0]}."
         return {
             "status": "supporting",
             "sections": supporting_found,
-            "snippet": snippet if snippet else "",
+            "snippet": snippet,
             "confidence": 0.70,
         }
 
@@ -444,7 +412,7 @@ def classify_skill_evidence(resume_text, skill):
             "status": "substitute",
             "sections": ["projects"],
             "substitute_tool": substitute_tool,
-            "snippet": "",
+            "snippet": f"Demonstrates {format_skill_display(substitute_tool)}, an industry-standard alternative.",
             "confidence": 0.75,
         }
 
@@ -452,21 +420,9 @@ def classify_skill_evidence(resume_text, skill):
         return {
             "status": "listed",
             "sections": ["skills"],
-            "snippet": "",
+            "snippet": "Found in Skills inventory without active project sentence context.",
             "confidence": 0.40,
         }
-
-    norm_full = normalize_text(resume_text)
-    for alias in aliases:
-        alias_norm = normalize_text(alias)
-        pattern = r"(?<![a-zA-Z0-9])" + re.escape(alias_norm) + r"(?![a-zA-Z0-9])"
-        if re.search(pattern, norm_full):
-            return {
-                "status": "listed",
-                "sections": ["document_body"],
-                "snippet": "",
-                "confidence": 0.40,
-            }
 
     return {
         "status": "missing",
@@ -480,27 +436,25 @@ def find_skill_evidence(text, skill):
     aliases = SKILL_ALIASES.get(skill, [skill])
     evidence = []
     for alias in aliases:
-        alias = normalize_text(alias)
-        pattern = r"(?<![a-zA-Z0-9])" + re.escape(alias) + r"(?![a-zA-Z0-9])"
+        alias_norm = normalize_text(alias)
+        pattern = r"(?<![a-zA-Z0-9])" + re.escape(alias_norm) + r"(?![a-zA-Z0-9])"
         if re.search(pattern, text):
-            evidence.append(alias)
+            evidence.append(alias_norm)
     return evidence
 
 def extract_skills(text):
+    # Only search substantive sections; exclude contact block and hobbies
+    sections = extract_resume_sections(text)
+    substantive_text = "\n".join(
+        sections[s] for s in ["skills", "projects", "experience", "internship", "certifications", "education"]
+    )
+    norm_text = normalize_text(substantive_text)
     detected_skills = set()
-    norm_text = normalize_text(text)
 
     for skill in SKILL_ALIASES:
-        evidence = find_skill_evidence(text, skill)
+        evidence = find_skill_evidence(norm_text, skill)
         if evidence:
             detected_skills.add(skill)
-        else:
-            for alias in SKILL_ALIASES[skill]:
-                alias_norm = normalize_text(alias)
-                pattern = r"(?<![a-zA-Z0-9])" + re.escape(alias_norm) + r"(?![a-zA-Z0-9])"
-                if re.search(pattern, norm_text):
-                    detected_skills.add(skill)
-                    break
 
     return sorted(detected_skills)
 
@@ -553,7 +507,7 @@ def parse_job_skill_sections(job_description):
     )
     preferred_skills = [s for s in preferred_skills if s not in required_skills]
 
-    # Resolve "Figma or Adobe XD" coalescing
+    # Handle "Figma or Adobe XD"
     lower_jd = job_description.lower()
     if ("figma or adobe xd" in lower_jd or "adobe xd or figma" in lower_jd) and "figma" in required_skills and "adobe xd" in required_skills:
         required_skills.remove("adobe xd")
@@ -584,7 +538,7 @@ def compare_skills(resume_text, job_description):
                     "status": "substitute",
                     "substitute_tool": alt,
                     "sections": ["projects"],
-                    "snippet": "",
+                    "snippet": f"Demonstrates {format_skill_display(alt)}, an industry-standard alternative.",
                     "confidence": 0.75
                 }
 
