@@ -500,7 +500,6 @@ def analyze_job_responsibilities(resume_text, job_description, skill_evidence_le
         elif rule["name"] == "testing and debugging":
             direct_patterns = ["debugging", "debug", "testing web applications", "test and maintain"]
         elif rule["name"] == "version control":
-            # Only match if active sentence mentioning workflows/git exists in substantive body
             direct_patterns = ["git version control", "git workflows", "version control using git", "collaborative development using git"]
         elif rule["name"] == "scalable application development":
             direct_patterns = ["scalable application", "scalable web application", "scalable system", "scalability"]
@@ -544,14 +543,20 @@ def analyze_job_responsibilities(resume_text, job_description, skill_evidence_le
                     "evidence": skill_evidence
                 })
 
-        # STRICT CONSISTENT RULE: Check evidence status of underlying skills
         if direct_evidence:
             status = "strong"
             reason = "The resume contains direct evidence in experience or projects supporting this responsibility."
         elif related_evidence or (rule["name"] == "version control" and "git" in resume_skills):
-            # If Git or related skills are listed only, label consistently as 'related'
             status = "related"
-            reason = "Skills referenced on resume, but lack full active project context demonstrating this responsibility."
+            reason = "Git (listed only, no project context)"
+        elif rule["name"] == "sql data querying" and ("sql" in resume_skills or "mysql" in resume_skills or "database" in resume_skills):
+            status = "related"
+            via_tool = "via MySQL" if "mysql" in resume_skills else "listed only"
+            reason = f"SQL / Database ({via_tool}, no project querying context)"
+            related_evidence.append({
+                "skill": "sql",
+                "evidence": [{"snippet": f"Identified in technical competencies ({via_tool})."}]
+            })
         else:
             status = "missing"
             reason = "No direct or meaningful related evidence was detected in the resume."

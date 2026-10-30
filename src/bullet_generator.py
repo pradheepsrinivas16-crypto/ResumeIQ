@@ -1,52 +1,44 @@
 """
 Resume Bullet-Point Optimizer (ATS Formatted)
-Provides metric-bracketed, honest bullet templates customized by technical domain.
+Provides honest, metric-bracketed bullet templates customized for foundational coursework and projects.
 """
 
 from src.skill_matcher import format_skill_display
 
 BULLET_TEMPLATES = {
     "dashboard": [
-        "Designed and published interactive Power BI/Tableau dashboards tracking [KPI / operational metric], reducing manual reporting turnaround by [X]%, if measurable.",
-        "Consolidated disparate business datasets into a centralized dashboard, enabling stakeholders to monitor [business metric] on a regular cadence."
+        "Designed and published an academic Power BI dashboard tracking [specific KPI or metric], organizing raw tabular inputs into visual reports.",
+        "Built interactive report views in Power BI/Excel to visualize project trends, presenting findings to stakeholders with clean chart layouts."
     ],
     "sql": [
-        "Authored optimized SQL queries utilizing joins, aggregations, and window functions to extract and transform [volume / records] for analysis.",
-        "Structured relational database queries to clean and aggregate multi-source records, accelerating data extraction time by [X]%."
+        "Authored SQL queries utilizing SELECT, WHERE filters, and basic table JOINs to extract structured subsets of data for class projects.",
+        "Created relational database tables and executed aggregation queries in MySQL/PostgreSQL to analyze [dataset domain]."
     ],
     "excel": [
-        "Built dynamic Excel reporting workbooks utilizing XLOOKUP, advanced pivot tables, and data models for [specific project or team].",
-        "Cleaned and reconciled tabular datasets in Excel using logical formulas and conditional formatting, eliminating manual entry errors."
+        "Organized and analyzed tabular datasets in Microsoft Excel utilizing VLOOKUP/XLOOKUP, pivot tables, and summary charts.",
+        "Applied Excel formulas and conditional formatting to clean raw survey/project records, eliminating manual calculation errors."
     ],
     "python": [
-        "Developed modular Python scripts to clean, process, and structure raw tabular datasets into analysis-ready formats.",
-        "Automated repetitive data extraction and preprocessing workflows using Python, saving approximately [X] hours per project milestone."
+        "Developed modular Python scripts to parse, clean, and structure raw data inputs into clean tabular formats.",
+        "Implemented data transformation routines in Python using standard libraries to automate recurring project analysis tasks."
     ],
     "pandas": [
-        "Leveraged Pandas for large-scale data manipulation, handling missing records and categorical encoding across [X] rows of data.",
-        "Vectorized tabular computations using Pandas DataFrames to preprocess experimental data for downstream reporting."
-    ],
-    "numpy": [
-        "Utilized NumPy arrays and mathematical vector operations to accelerate scientific and statistical data calculations.",
-        "Implemented numerical data transformations and array slicing in Python to prepare structured inputs for analysis."
+        "Loaded and inspected tabular datasets using Pandas DataFrames, handling missing values and basic summary statistics.",
+        "Applied Pandas functions (.groupby(), .merge()) to transform and clean multi-table records for exploratory analysis."
     ],
     "power bi": [
-        "Constructed end-to-end Power BI data models with star-schema architecture, creating custom DAX measures for [KPI / metric].",
-        "Developed and maintained executive Power BI reports, delivering automated data refreshes and actionable visual insights."
+        "Built foundational Power BI dashboards connecting to Excel/CSV data sources, implementing bar charts and KPI summary cards.",
+        "Modeled basic two-table relationships in Power BI to produce interactive visual reports for coursework presentations."
     ],
     "rest api": [
-        "Architected and integrated RESTful API endpoints for asynchronous client-server communication, handling [payload / request type].",
-        "Consumed external REST APIs and implemented client-side error handling, state hydration, and HTTP status-code handling."
-    ],
-    "statistical analysis": [
-        "Conducted descriptive and inferential statistical analysis to evaluate data distributions, variance, and feature correlations.",
-        "Applied hypothesis testing and statistical modeling techniques to validate business assumptions across [dataset name]."
+        "Integrated RESTful API endpoints for client-server communication, implementing error handling and status-code validation (e.g., 200 vs 404).",
+        "Consumed external REST APIs and parsed JSON response payloads into frontend component state."
     ]
 }
 
 DEFAULT_TEMPLATES = [
-    "Applied {skill} within academic and project coursework to implement [specific feature or analysis], improving workflow execution.",
-    "Integrated {skill} into project workflows adhering to industry standards and modern technical best practices."
+    "Applied foundational concepts of {skill} within coursework and project labs to implement [specific feature or analysis].",
+    "Practiced {skill} adhering to standard coding conventions and technical guidelines during project assignments."
 ]
 
 def generate_resume_bullets(skill_name):

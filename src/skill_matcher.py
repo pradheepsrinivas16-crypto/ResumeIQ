@@ -254,7 +254,6 @@ def clean_evidence_sentence(sentence):
     text = re.sub(MONTH_REGEX + r"\s*\d{2,4}\b", "", text, flags=re.I)
     text = re.sub(r"\b(19|20)\d{2}\s*[-–—]\s*(Present|(19|20)\d{2})\b", "", text, flags=re.I)
     text = re.sub(r"\b(19|20)\d{2}\b", "", text)
-    # Strip isolated dashes that are NOT connecting words
     text = re.sub(r"(?<![a-zA-Z0-9])[-–—]+(?![a-zA-Z0-9])", " ", text)
     text = re.sub(r"(^\s*[:;,.\s]+|[:;,.\s]+$)", "", text).strip()
     text = re.sub(r"\s+", " ", text).strip()
@@ -264,7 +263,6 @@ def extract_skill_snippet(text, aliases, max_len=260):
     if not text:
         return ""
     
-    # Split text by bullet markers, newlines, or sentence boundaries
     raw_units = re.split(r"\n+|[\u2022\u25cf\u25cb\u25e6\u2023\u25b8●•]|(?<=[.!?])\s+", text)
     
     ACTION_VERBS = {
@@ -283,7 +281,6 @@ def extract_skill_snippet(text, aliases, max_len=260):
             continue
         unit_lower = clean_unit.lower()
         
-        # Guard against truncated titles with unclosed parentheses
         if clean_unit.count("(") > clean_unit.count(")"):
             continue
 
@@ -303,7 +300,6 @@ def extract_skill_snippet(text, aliases, max_len=260):
             words = set(re.findall(r"\b[a-zA-Z]+\b", unit_lower))
             has_action = bool(words.intersection(ACTION_VERBS))
             
-            # Prefer substantive bullet sentences over title/tech-list tags
             if has_action and not is_metadata:
                 action_units.append(clean_unit)
             elif not is_metadata:
@@ -324,7 +320,6 @@ def find_contextual_skill_evidence(resume_text, skill):
     aliases = SKILL_ALIASES.get(skill, [skill])
     evidence = []
 
-    # Exclude contact, profile, and hobbies to avoid false matches
     for section_name in ["projects", "experience", "internship", "certifications", "education", "skills"]:
         section_text = sections.get(section_name, "")
         if not section_text.strip():
@@ -353,7 +348,6 @@ def classify_skill_evidence(resume_text, skill):
     aliases = SKILL_ALIASES.get(skill, [skill])
     found_sections = []
 
-    # STRICT RULE: Never look for skills in contact or hobbies sections!
     for section_name in ["skills", "projects", "experience", "internship", "certifications", "education"]:
         section_text = sections.get(section_name, "")
         if not section_text.strip():
@@ -381,22 +375,28 @@ def classify_skill_evidence(resume_text, skill):
                 "snippet": snippet,
                 "confidence": 1.0,
             }
+        
+        tag_snippet = ""
+        for line in substantive_body.splitlines():
+            line_clean = clean_evidence_sentence(line)
+            if any(re.search(r"(?<![a-zA-Z0-9])" + re.escape(a.lower()) + r"(?![a-zA-Z0-9])", line_clean.lower()) for a in aliases):
+                tag_snippet = line_clean
+                break
+
         return {
             "status": "supporting",
             "sections": strong_found,
-            "snippet": f"Mentioned in {strong_found[0]} tech summary without dedicated action sentence.",
+            "snippet": tag_snippet if tag_snippet else f"Mentioned in {strong_found[0]} tech summary.",
             "confidence": 0.70,
         }
 
-    # Supporting sections: internship, certifications, education
     supporting_sections = {"internship", "certifications", "education"}
     supporting_found = [s for s in found_sections if s in supporting_sections]
     if supporting_found:
         substantive_body = "\n".join(sections[k] for k in supporting_found if k in sections)
         snippet = extract_skill_snippet(substantive_body, aliases)
         if not snippet:
-            # Fall back to the first non-empty line of that section (e.g. role title)
-            lines = [l.strip() for l in substantive_body.splitlines() if l.strip()]
+            lines = [clean_evidence_sentence(l) for l in substantive_body.splitlines() if clean_evidence_sentence(l)]
             snippet = lines[0] if lines else f"Referenced in {supporting_found[0]}."
         return {
             "status": "supporting",
@@ -417,10 +417,13 @@ def classify_skill_evidence(resume_text, skill):
         }
 
     if "skills" in found_sections:
+        snippet_note = "Found in Skills inventory without active project sentence context."
+        if skill in {"sql", "database"} and "mysql" in normalize_text(sections.get("skills", "")):
+            snippet_note = "Found in Skills inventory via MySQL without active project sentence context."
         return {
             "status": "listed",
             "sections": ["skills"],
-            "snippet": "Found in Skills inventory without active project sentence context.",
+            "snippet": snippet_note,
             "confidence": 0.40,
         }
 
@@ -443,7 +446,6 @@ def find_skill_evidence(text, skill):
     return evidence
 
 def extract_skills(text):
-    # Only search substantive sections; exclude contact block and hobbies
     sections = extract_resume_sections(text)
     substantive_text = "\n".join(
         sections[s] for s in ["skills", "projects", "experience", "internship", "certifications", "education"]
@@ -507,7 +509,6 @@ def parse_job_skill_sections(job_description):
     )
     preferred_skills = [s for s in preferred_skills if s not in required_skills]
 
-    # Handle "Figma or Adobe XD"
     lower_jd = job_description.lower()
     if ("figma or adobe xd" in lower_jd or "adobe xd or figma" in lower_jd) and "figma" in required_skills and "adobe xd" in required_skills:
         required_skills.remove("adobe xd")

@@ -1,12 +1,5 @@
 from src.skill_matcher import SKILL_ALIASES
 
-# ============================================================
-# ROLE TAXONOMY & HARD GATES
-# Core skills are non-negotiable for role foundation.
-# Hard gates require true domain skills (e.g., ML modeling
-# libraries for Data Scientist, backend framework for Full Stack).
-# ============================================================
-
 ROLE_PROFILES = {
     "Data Analyst": {
         "core": ["python", "sql", "data analysis", "data visualization"],
@@ -21,7 +14,6 @@ ROLE_PROFILES = {
     "Data Scientist": {
         "core": ["python", "machine learning", "data analysis", "statistical analysis"],
         "supporting": ["pandas", "numpy", "scikit-learn", "predictive modeling", "data visualization", "deep learning"],
-        # Hard gate: Candidate MUST have an actual ML modeling competency
         "hard_gate": {"machine learning", "scikit-learn", "deep learning", "predictive modeling"}
     },
 
@@ -32,37 +24,36 @@ ROLE_PROFILES = {
     },
 
     "Frontend Developer": {
-        "core": ["html", "css", "javascript", "react"],
-        "supporting": ["typescript", "responsive web design", "ui/ux", "figma", "git"],
-        "hard_gate": {"html", "javascript", "react"}
+        "core": ["html", "css", "javascript"],
+        "supporting": ["react", "angular", "typescript", "responsive web design", "ui/ux", "figma", "git"],
+        "hard_gate": {"html", "javascript"}
     },
 
     "Full Stack Developer": {
+        # Covers both Modern JS (React/Node) and Enterprise (Java/Spring Boot/Angular)
         "core": ["javascript", "html", "css", "sql"],
-        "supporting": ["java", "react", "node.js", "mysql", "rest api", "spring boot", "git", "github"],
-        # Full stack requires both client-side and server-side components
-        "hard_gate_frontend": {"html", "javascript", "react"},
-        "hard_gate_backend": {"node.js", "spring boot", "fastapi", "django", "rest api"}
+        "supporting": ["java", "spring boot", "angular", "react", "node.js", "mysql", "rest api", "git"],
+        "hard_gate_frontend": {"html", "javascript", "react", "angular"},
+        "hard_gate_backend": {"spring boot", "node.js", "fastapi", "django", "rest api", "java"}
     },
 
     "Backend Developer": {
         "core": ["java", "spring boot", "rest api"],
-        "supporting": ["node.js", "sql", "mysql", "python", "fastapi", "git", "github"],
-        "hard_gate": {"spring boot", "node.js", "fastapi", "django", "rest api"}
+        "supporting": ["node.js", "sql", "mysql", "python", "fastapi", "git"],
+        "hard_gate": {"spring boot", "node.js", "fastapi", "django", "rest api", "java"}
     },
 
     "Software Engineer": {
         "core": ["java", "python", "javascript"],
-        "supporting": ["sql", "git", "github", "rest api"],
+        "supporting": ["sql", "git", "rest api", "data structures"],
     },
 
     "Mechanical Design Engineer": {
         "core": ["mechanical engineering", "autocad", "solidworks"],
-        "supporting": ["catia", "cad", "3d modeling", "gd&t", "manufacturing", "engineering drawings", "mechanical design"],
+        "supporting": ["catia", "cad", "3d modeling", "gd&t", "manufacturing", "mechanical design"],
     },
 }
 
-# Evidence weights used when scoring with evidence levels
 EVIDENCE_WEIGHTS = {
     "demonstrated": 1.00,
     "supporting": 0.70,
@@ -75,17 +66,10 @@ EVIDENCE_WEIGHTS = {
 CORE_WEIGHT = 0.70
 SUPPORTING_WEIGHT = 0.30
 
-
-# ============================================================
-# CANONICALIZE RESUME SKILLS
-# ============================================================
-
 def canonicalize_resume_skills(resume_skills):
-    """Convert aliases into the canonical skill names used by ROLE_PROFILES."""
     alias_to_canonical = {}
     for canonical, aliases in SKILL_ALIASES.items():
-        canonical_key = canonical.lower().strip()
-        alias_to_canonical[canonical_key] = canonical
+        alias_to_canonical[canonical.lower().strip()] = canonical
         for alias in aliases:
             alias_to_canonical[alias.lower().strip()] = canonical
 
@@ -95,11 +79,6 @@ def canonicalize_resume_skills(resume_skills):
         canonical_skills.add(alias_to_canonical.get(normalized, normalized))
 
     return canonical_skills
-
-
-# ============================================================
-# CALCULATE ROLE SUITABILITY (WEIGHTED WITH HARD GATING)
-# ============================================================
 
 def calculate_role_suitability(resume_skills, role_name, skill_evidence_levels=None):
     if role_name not in ROLE_PROFILES:
@@ -116,26 +95,21 @@ def calculate_role_suitability(resume_skills, role_name, skill_evidence_levels=N
     matched_skills = sorted(list(candidate_skills.intersection(all_required)))
     missing_skills = sorted(list(all_required - candidate_skills))
 
-    # --------------------------------------------------------
-    # Hard Gating Checks
-    # --------------------------------------------------------
-    if "hard_gate" in profile:
-        if not candidate_skills.intersection(profile["hard_gate"]):
-            missing_gates = sorted(list(profile["hard_gate"] - candidate_skills))
-            # Gated: candidate lacks core discipline competencies
-            return {
-                "role": role_name,
-                "coverage": 32.0,
-                "core_coverage": 25.0,
-                "supporting_coverage": 40.0,
-                "status": "Low Fit",
-                "matched_skills": matched_skills,
-                "missing_skills": missing_skills,
-                "core_matched": sorted(list(candidate_skills.intersection(core_required))),
-                "core_missing": sorted(list(core_required - candidate_skills)),
-                "supporting_matched": sorted(list(candidate_skills.intersection(supporting_required))),
-                "supporting_missing": sorted(list(supporting_required - candidate_skills)),
-            }
+    # Hard Gates
+    if "hard_gate" in profile and not candidate_skills.intersection(profile["hard_gate"]):
+        return {
+            "role": role_name,
+            "coverage": 32.0,
+            "core_coverage": 25.0,
+            "supporting_coverage": 40.0,
+            "status": "Low Fit",
+            "matched_skills": matched_skills,
+            "missing_skills": missing_skills,
+            "core_matched": sorted(list(candidate_skills.intersection(core_required))),
+            "core_missing": sorted(list(core_required - candidate_skills)),
+            "supporting_matched": sorted(list(candidate_skills.intersection(supporting_required))),
+            "supporting_missing": sorted(list(supporting_required - candidate_skills)),
+        }
 
     if "hard_gate_backend" in profile:
         has_fe = bool(candidate_skills.intersection(profile["hard_gate_frontend"]))
@@ -155,9 +129,6 @@ def calculate_role_suitability(resume_skills, role_name, skill_evidence_levels=N
                 "supporting_missing": sorted(list(supporting_required - candidate_skills)),
             }
 
-    # --------------------------------------------------------
-    # Evidence level weight helper
-    # --------------------------------------------------------
     def get_evidence_weight(skill):
         if not ev_levels:
             return 1.0 if skill in candidate_skills else 0.0
@@ -172,9 +143,6 @@ def calculate_role_suitability(resume_skills, role_name, skill_evidence_levels=N
         status = str(ev.get("status", "missing")).strip().lower()
         return EVIDENCE_WEIGHTS.get(status, 1.0 if skill in candidate_skills else 0.0)
 
-    # --------------------------------------------------------
-    # Score calculation
-    # --------------------------------------------------------
     if core_required:
         core_score_sum = sum(get_evidence_weight(s) for s in core_required if s in candidate_skills)
         core_score = core_score_sum / len(core_required)
@@ -210,11 +178,6 @@ def calculate_role_suitability(resume_skills, role_name, skill_evidence_levels=N
         "supporting_missing": sorted(list(supporting_required - candidate_skills)),
     }
 
-
-# ============================================================
-# RECOMMEND ROLES
-# ============================================================
-
 def recommend_roles(resume_skills, skill_evidence_levels=None):
     results = [
         calculate_role_suitability(
@@ -225,7 +188,6 @@ def recommend_roles(resume_skills, skill_evidence_levels=None):
         for role_name in ROLE_PROFILES
     ]
 
-    # Deterministic sorting: Highest coverage first, then more matches, then fewer missing, then role name
     results.sort(
         key=lambda x: (
             x["coverage"],
