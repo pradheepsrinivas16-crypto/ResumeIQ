@@ -26,7 +26,12 @@ DISPLAY_SKILL_NAMES = {
     "sem": "SEM",
     "hris": "HRIS",
     "numpy": "NumPy",
-    "pandas": "Pandas"
+    "pandas": "Pandas",
+    "fastapi": "FastAPI",
+    "graphql": "GraphQL",
+    "github": "GitHub",
+    "gitlab": "GitLab",
+    "node.js": "Node.js"
 }
 
 def format_skill_display(name):
@@ -119,7 +124,6 @@ SKILL_ALIASES = {
     "pytorch": ["pytorch", "torch"],
 }
 
-# CONCRETE EQUIVALENT TOOLS ONLY (No circular abstract substitutions)
 EQUIVALENT_TOOL_MAP = {
     "adobe xd": {"figma", "sketch", "invision"},
     "figma": {"adobe xd", "sketch", "invision"},
@@ -143,7 +147,6 @@ def find_equivalent_skill(target_skill, available_skills):
     target_clean = str(target_skill).strip().lower()
     available_set = {str(s).strip().lower() for s in available_skills}
 
-    # Strict: Abstract categories (database, sql) do not take substitute tags; they match directly
     if target_clean in {"database", "sql"}:
         return None
 
@@ -248,6 +251,7 @@ def clean_evidence_sentence(sentence):
     text = re.sub(MONTH_REGEX + r"\s*\d{2,4}\b", "", text, flags=re.I)
     text = re.sub(r"\b(19|20)\d{2}\s*[-–—]\s*(Present|(19|20)\d{2})\b", "", text, flags=re.I)
     text = re.sub(r"\b(19|20)\d{2}\b", "", text)
+    text = re.sub(r"\b(Present|Current)\b\s*$", "", text, flags=re.I).strip()
     text = re.sub(r"(?<![a-zA-Z0-9])[-–—]+(?![a-zA-Z0-9])", " ", text)
     text = re.sub(r"(^\s*[:;,.\s]+|[:;,.\s]+$)", "", text).strip()
     text = re.sub(r"\s+", " ", text).strip()
@@ -255,7 +259,7 @@ def clean_evidence_sentence(sentence):
 
 def extract_skill_snippet(text, aliases, max_len=280):
     if not text:
-        return ""
+        return ("", False)
     
     lines = text.splitlines()
     joined_blocks = []
@@ -286,7 +290,7 @@ def extract_skill_snippet(text, aliases, max_len=280):
     
     action_units = []
     descriptive_units = []
-    header_units = []
+    header_tag_units = []
 
     for unit in raw_units:
         clean_unit = clean_evidence_sentence(unit)
@@ -312,26 +316,40 @@ def extract_skill_snippet(text, aliases, max_len=280):
             words = set(re.findall(r"\b[a-zA-Z]+\b", unit_lower))
             has_action = bool(words.intersection(ACTION_VERBS))
             
-            if ("(" in clean_unit and ")" in clean_unit) and not has_action:
-                header_units.append(clean_unit)
+            # Check if skill only appears inside parentheses e.g. "(HTML, CSS, JS)"
+            inside_parens = bool(re.search(r"\([^)]*" + re.escape(aliases[0].lower()) + r"[^)]*\)", unit_lower))
+            
+            if inside_parens and not has_action:
+                header_tag_units.append(clean_unit)
             elif has_action:
                 action_units.append(clean_unit)
             else:
                 descriptive_units.append(clean_unit)
 
-    chosen = action_units[0] if action_units else (descriptive_units[0] if descriptive_units else (header_units[0] if header_units else ""))
-    
-    if chosen:
-        if len(chosen) > max_len:
-            cut = chosen[:max_len]
-            punct_pos = max(cut.rfind("."), cut.rfind(";"), cut.rfind(","))
-            if punct_pos > int(max_len * 0.65):
-                return cut[:punct_pos + 1].strip()
-            if " " in cut:
-                return cut.rsplit(" ", 1)[0] + "..."
-            return cut + "..."
-        return chosen
-    return ""
+    # UNIFORM RULE: Action sentence = Demonstrated (1.0x). Pure tech tag in title = Supporting (0.70x).
+    if action_units:
+        chosen = action_units[0]
+        is_action_sentence = True
+    elif descriptive_units:
+        chosen = descriptive_units[0]
+        is_action_sentence = True
+    elif header_tag_units:
+        chosen = header_tag_units[0]
+        is_action_sentence = False
+    else:
+        return ("", False)
+
+    if len(chosen) > max_len:
+        cut = chosen[:max_len]
+        punct_pos = max(cut.rfind("."), cut.rfind(";"), cut.rfind(","))
+        if punct_pos > int(max_len * 0.65):
+            chosen = cut[:punct_pos + 1].strip()
+        elif " " in cut:
+            chosen = cut.rsplit(" ", 1)[0] + "..."
+        else:
+            chosen = cut + "..."
+
+    return (chosen, is_action_sentence)
 
 def find_contextual_skill_evidence(resume_text, skill):
     sections = extract_resume_sections(resume_text)
@@ -348,7 +366,7 @@ def find_contextual_skill_evidence(resume_text, skill):
             alias_norm = normalize_text(alias)
             pattern = r"(?<![a-zA-Z0-9])" + re.escape(alias_norm) + r"(?![a-zA-Z0-9])"
             if re.search(pattern, normalized_section):
-                snippet = extract_skill_snippet(section_text, aliases)
+                snippet, _ = extract_skill_snippet(section_text, aliases)
                 evidence.append({
                     "section": section_name,
                     "evidence": alias,
@@ -361,7 +379,7 @@ def find_contextual_skill_evidence(resume_text, skill):
 
     return evidence
 
-def classify_skill_evidence(resume_text, skill):
+def classify_skill_evidence(resume_text, skill, is_substitute_lookup=False):
     sections = extract_resume_sections(resume_text)
     aliases = SKILL_ALIASES.get(skill, [skill])
     found_sections = []
@@ -385,34 +403,27 @@ def classify_skill_evidence(resume_text, skill):
 
     if strong_found:
         substantive_body = "\n".join(sections[k] for k in strong_found if k in sections)
-        snippet = extract_skill_snippet(substantive_body, aliases)
-        if snippet:
+        snippet, is_action = extract_skill_snippet(substantive_body, aliases)
+        if snippet and is_action:
             return {
                 "status": "demonstrated",
                 "sections": strong_found,
                 "snippet": snippet,
                 "confidence": 1.0,
             }
-        
-        tag_snippet = ""
-        for line in substantive_body.splitlines():
-            line_clean = line.strip()
-            if any(re.search(r"(?<![a-zA-Z0-9])" + re.escape(a.lower()) + r"(?![a-zA-Z0-9])", line_clean.lower()) for a in aliases):
-                tag_snippet = clean_evidence_sentence(line_clean)
-                break
-
-        return {
-            "status": "supporting",
-            "sections": strong_found,
-            "snippet": tag_snippet if tag_snippet else f"Referenced in {strong_found[0]} tech summary.",
-            "confidence": 0.70,
-        }
+        elif snippet:
+            return {
+                "status": "supporting",
+                "sections": strong_found,
+                "snippet": snippet,
+                "confidence": 0.70,
+            }
 
     supporting_sections = {"internship", "certifications", "education"}
     supporting_found = [s for s in found_sections if s in supporting_sections]
     if supporting_found:
         substantive_body = "\n".join(sections[k] for k in supporting_found if k in sections)
-        snippet = extract_skill_snippet(substantive_body, aliases)
+        snippet, _ = extract_skill_snippet(substantive_body, aliases)
         if not snippet:
             lines = [l.strip() for l in substantive_body.splitlines() if l.strip()]
             snippet = clean_evidence_sentence(lines[0]) if lines else f"Referenced in {supporting_found[0]}."
@@ -424,19 +435,29 @@ def classify_skill_evidence(resume_text, skill):
         }
 
     candidate_all_skills = extract_skills(resume_text)
-    
-    # Check if concrete equivalent tool exists (e.g. PostgreSQL satisfying MySQL)
-    substitute_tool = find_equivalent_skill(skill, candidate_all_skills)
-    if substitute_tool:
-        return {
-            "status": "substitute",
-            "sections": ["projects"],
-            "substitute_tool": substitute_tool,
-            "snippet": f"Demonstrates {format_skill_display(substitute_tool)}, satisfying this requirement via industry equivalence.",
-            "confidence": 0.75,
-        }
 
-    # If candidate has MySQL or Postgres, directly satisfy SQL and Database as Listed Only
+    # 1. Substitute Tool Check (Only run if this is not already a substitute evaluation)
+    if not is_substitute_lookup:
+        substitute_tool = find_equivalent_skill(skill, candidate_all_skills)
+        if substitute_tool:
+            # Pass is_substitute_lookup=True to prevent mutual recursion loops
+            sub_ev = classify_skill_evidence(resume_text, substitute_tool, is_substitute_lookup=True)
+            sub_status = sub_ev.get("status", "listed")
+            sub_conf = sub_ev.get("confidence", 0.40)
+
+            # Invariant: Substitute weight cannot exceed the underlying tool's weight
+            effective_weight = min(0.75, sub_conf)
+            effective_status = "substitute" if effective_weight >= 0.75 else ("supporting" if effective_weight >= 0.70 else "listed")
+
+            return {
+                "status": effective_status,
+                "sections": sub_ev.get("sections", ["skills"]),
+                "substitute_tool": substitute_tool,
+                "snippet": f"Demonstrates {format_skill_display(substitute_tool)} ({sub_status.title()} evidence).",
+                "confidence": effective_weight,
+            }
+
+    # 2. Database/SQL alias resolution
     if skill in {"sql", "database"} and ("mysql" in candidate_all_skills or "postgresql" in candidate_all_skills):
         via_db = "MySQL" if "mysql" in candidate_all_skills else "PostgreSQL"
         return {
@@ -518,7 +539,6 @@ def extract_job_skills(text):
     norm_text = normalize_text(text)
     detected_skills = set()
     for skill in SKILL_ALIASES:
-        # Prevent false positive: Only extract 'database' if explicitly mentioned
         if skill == "database" and not re.search(r"\bdatabases?\b", norm_text):
             continue
         evidence = find_skill_evidence(text, skill)
@@ -544,22 +564,35 @@ def parse_job_skill_sections(job_description):
     )
     preferred_skills = [s for s in preferred_skills if s not in required_skills]
 
-    # Handle ANY-OF GROUPS (Slash / Or Delimiters)
+    # COALESCE ANY-OF / ALTERNATIVE GROUPS
     lower_jd = job_description.lower()
     
-    # 1. BI Tools: Tableau / PowerBI
+    # 1. BI Tools: Tableau or PowerBI
     if any(p in lower_jd for p in ["tableau/powerbi", "powerbi/tableau", "tableau / power bi", "tableau or power bi", "power bi or tableau"]):
         if "tableau" in required_skills and "power bi" in required_skills:
             required_skills.remove("tableau")
 
-    # 2. UI Tools: Figma / Adobe XD
+    # 2. UI Tools: Figma or Adobe XD
     if any(p in lower_jd for p in ["figma or adobe xd", "adobe xd or figma", "figma/adobe xd"]):
         if "figma" in required_skills and "adobe xd" in required_skills:
             required_skills.remove("adobe xd")
 
-    # 3. Relational DB grouping in JD: If JD asks for "PostgreSQL, MySQL, or MongoDB"
-    if "mysql" in required_skills and "postgresql" in required_skills and ("mysql or postgresql" in lower_jd or "postgresql/mysql" in lower_jd):
-        required_skills.remove("postgresql")
+    # 3. Version Control alternatives: Git, GitHub, GitLab
+    if ("git" in required_skills and "github" in required_skills) or ("git" in required_skills and "gitlab" in required_skills):
+        if "github" in required_skills:
+            required_skills.remove("github")
+        if "gitlab" in required_skills:
+            required_skills.remove("gitlab")
+
+    # 4. API protocol alternatives: RESTful or GraphQL
+    if ("restful or graphql" in lower_jd or "rest or graphql" in lower_jd or "rest/graphql" in lower_jd):
+        if "rest api" in required_skills and "graphql" in required_skills:
+            required_skills.remove("graphql")
+
+    # 5. Database alternatives: e.g. "PostgreSQL, MySQL, or MongoDB"
+    if ("mysql or postgresql" in lower_jd or "postgresql or mysql" in lower_jd or "mysql/postgresql" in lower_jd):
+        if "postgresql" in required_skills and "mysql" in required_skills:
+            required_skills.remove("postgresql")
 
     return required_skills, preferred_skills
 
@@ -570,7 +603,6 @@ def compare_skills(resume_text, job_description):
     for skill in resume_skills:
         skill_evidence_levels[skill] = classify_skill_evidence(resume_text, skill)
 
-    resume_skill_set = set(resume_skills)
     required_skills, preferred_skills = parse_job_skill_sections(job_description)
 
     matched = []
