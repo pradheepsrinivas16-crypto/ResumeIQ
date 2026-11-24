@@ -34,15 +34,23 @@ JD_CENTRALITY = [
     "pandas", "numpy", "kpi", "statistical analysis"
 ]
 
-def generate_interview_questions(missing_skills, substituted_skills=None, supporting_skills=None, listed_skills=None, demonstrated_skills=None, final_score=100.0):
+def generate_interview_questions(
+    missing_skills,
+    substituted_skills=None,
+    supporting_skills=None,
+    listed_skills=None,
+    demonstrated_skills=None,
+    final_score=100.0,
+    supporting_evidence_map=None
+):
     questions = []
     missing_skills = [str(s).strip().lower() for s in (missing_skills or [])]
     substituted_skills = substituted_skills or {}
     supporting_skills = [str(s).strip().lower() for s in (supporting_skills or [])]
     listed_skills = [str(s).strip().lower() for s in (listed_skills or [])]
     demonstrated_skills = [str(s).strip().lower() for s in (demonstrated_skills or [])]
+    supp_ev_map = supporting_evidence_map or {}
 
-    # FILTER: Remove abstract database terms from missing and substitute lists
     filtered_missing = [s for s in missing_skills if s not in {"database", "sql"}]
     
     # 1. Missing requirements prioritized by JD centrality
@@ -62,7 +70,6 @@ def generate_interview_questions(missing_skills, substituted_skills=None, suppor
     for target_skill, sub_tool in substituted_skills.items():
         if len(questions) >= 5:
             break
-        # Guard: Never generate transitions into abstract "Database" or "SQL"
         if target_skill in {"database", "sql", "mongodb", "mysql", "postgresql"}:
             continue
         
@@ -82,15 +89,27 @@ def generate_interview_questions(missing_skills, substituted_skills=None, suppor
             "question": f"You've used {sub_disp} in projects, while our role specifies {target_disp}. How comfortable are you translating your {asset_phrase} into {target_disp}?"
         })
 
-    # 3. Supporting skills probe
+    # 3. Section-aware Supporting skills probe
     for skill in supporting_skills:
         if len(questions) >= 5:
             break
         disp = format_skill_display(skill)
+        ev_info = supp_ev_map.get(skill, {})
+        sections = [str(sec).lower() for sec in ev_info.get("sections", [])]
+        snippet = str(ev_info.get("snippet", "")).strip()
+
+        if "projects" in sections:
+            proj_title = snippet.split("(")[0].strip() if "(" in snippet else "your project"
+            q_text = f"{disp} appears in {proj_title}'s tech list. What specific modules, logic, or functions did you implement in {disp} there?"
+            q_type = "Project Tech-List Verification"
+        else:
+            q_text = f"You have {disp} listed under your internship or educational experience. What specific features, interfaces, or deliverables did you build with {disp} during that period?"
+            q_type = "Supporting Skill Verification"
+
         questions.append({
             "category": f"Experience Verification ({disp})",
-            "type": "Supporting Skill Verification",
-            "question": f"You have {disp} listed under your internship or educational experience. What specific features, interfaces, or deliverables did you build with {disp} during that period?"
+            "type": q_type,
+            "question": q_text
         })
 
     # 4. Listed skills probe

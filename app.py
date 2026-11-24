@@ -689,21 +689,22 @@ if "result" in st.session_state:
 
                 with evidence_col2:
                     if listed:
-                        st.markdown("#### 🔵 Listed Only (0.40x Partial Credit)")
-                        for skill, evidence in listed:
-                            disp_name = format_skill_display(skill)
-                            render_html(
-                                f"""
-                                <div class="explanation-card" style="margin-bottom:10px;">
-                                    <div class="explanation-title">• {disp_name}</div>
-                                    <div class="explanation-text" style="color:#cbd5e1;">
-                                        <strong>Status: Listed Only (0.4x)</strong><br>
-                                        Found only in Skills section without active project sentence context.
-                                    </div>
-                                </div>
-                                """,
-                                unsafe_allow_html=True
-                            )
+                     st.markdown("#### 🔵 Listed Only (0.40x Partial Credit)")
+                     for skill, evidence in listed:
+                         disp_name = format_skill_display(skill)
+                         list_reason = evidence.get("snippet") or "Found only in Skills section without active project sentence context."
+                         render_html(
+                             f"""
+                             <div class="explanation-card" style="margin-bottom:10px;">
+                                 <div class="explanation-title">• {disp_name}</div>
+                                 <div class="explanation-text" style="color:#cbd5e1;">
+                                     <strong>Status: Listed Only (0.40x)</strong><br>
+                                     {list_reason}
+                                 </div>
+                             </div>
+                             """,
+                             unsafe_allow_html=True
+                         )
 
                     if missing:
                         st.markdown("#### 🔴 Missing Requirements (0.0x)")
@@ -751,14 +752,16 @@ if "result" in st.session_state:
 
         # SMART RECRUITER INTERVIEW QUESTIONS
         subs_map = {s: ev.get("substitute_tool", "Eq") for s, ev in substitutes}
-        interview_questions = generate_interview_questions(
-            missing_skills=[s for s, ev in missing],
-            substituted_skills=subs_map,
-            supporting_skills=[s for s, ev in supporting],
-            listed_skills=[s for s, ev in listed],
-            demonstrated_skills=[s for s, ev in demonstrated],
-            final_score=final_score
-        )
+     supp_ev_map = {s: ev for s, ev in supporting}
+     interview_questions = generate_interview_questions(
+         missing_skills=[s for s, ev in missing],
+         substituted_skills=subs_map,
+         supporting_skills=[s for s, ev in supporting],
+         listed_skills=[s for s, ev in listed],
+         demonstrated_skills=[s for s, ev in demonstrated],
+         final_score=final_score,
+         supporting_evidence_map=supp_ev_map
+     )
 
         if interview_questions:
             st.write("")
