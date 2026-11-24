@@ -752,8 +752,8 @@ if "result" in st.session_state:
 
         # SMART RECRUITER INTERVIEW QUESTIONS
         subs_map = {s: ev.get("substitute_tool", "Eq") for s, ev in substitutes}
-     supp_ev_map = {s: ev for s, ev in supporting}
-     interview_questions = generate_interview_questions(
+        supp_ev_map = {s: ev for s, ev in supporting}
+        interview_questions = generate_interview_questions(
          missing_skills=[s for s, ev in missing],
          substituted_skills=subs_map,
          supporting_skills=[s for s, ev in supporting],
