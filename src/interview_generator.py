@@ -99,10 +99,14 @@ def generate_interview_questions(
         snippet = str(ev_info.get("snippet", "")).strip()
 
         if "projects" in sections:
-            proj_title = snippet.split("(")[0].strip() if "(" in snippet else "your project"
+            if "(" in snippet:
+                proj_title = snippet.split("(")[0].strip()
+            else:
+                disp_first = format_skill_display(skill)
+                proj_title = snippet.split(disp_first)[0].rstrip(" ,:-–—").strip() if disp_first in snippet else "your project"
+            if not proj_title or len(proj_title) > 60:
+                proj_title = "your project"
             project_tech_groups.setdefault(proj_title, []).append(skill)
-        else:
-            internship_supp.append(skill)
 
     # 3a. Ask internship/experience framework verification questions first (e.g., React, Java)
     for skill in internship_supp:

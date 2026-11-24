@@ -171,6 +171,13 @@ def analyze_job_relevant_capabilities(resume_skills, job_skills, skill_evidence_
                 alignment = "Low Alignment"
             else:
                 alignment = "Strong Alignment" if coverage >= 80.0 else "Partial Alignment"
+        elif capability_name == "backend development":
+            has_be_core = bool(set(relevant_job_skills).intersection(core_skills))
+            if not has_be_core or len(matched) < 2 or coverage <= 40.0:
+                coverage = min(coverage, 55.0)
+                alignment = "Partial Alignment" if coverage > 40.0 else "Low Alignment"
+            else:
+                alignment = "Strong Alignment" if coverage >= 80.0 else "Partial Alignment"        
 
         elif capability_name == "ui ux development":
             has_design_core = bool(resume_skills.intersection({"figma", "ui/ux", "adobe xd"}))

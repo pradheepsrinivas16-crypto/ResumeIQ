@@ -314,7 +314,7 @@ def analyze_job_responsibilities(resume_text, job_description, skill_evidence_le
                 "responsibility": responsibility,
                 "status": "related",
                 "evidence": [],
-                "related_evidence": [{"skill": t[0], "tier_label": "supporting"} for t in supp_items],
+                "related_evidence": [{"skill": format_skill_display(t[0]), "tier_label": "supporting"} for t in supp_items],
                 "reason": f"Supporting context detected ({', '.join(format_skill_display(t[0]) for t in supp_items)})."
             })
         else:

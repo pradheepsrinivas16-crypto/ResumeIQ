@@ -96,3 +96,31 @@ def test_capability_40_percent_maps_to_low_alignment():
     vc = next(c for c in caps if c["capability"] == "Version Control")
     assert vc["coverage"] == 40.0
     assert vc["alignment"] == "Low Alignment"
+
+def test_git_url_and_substring_guard():
+    """Ensures github.com URLs and English words like 'Digital' never trigger false Git matches."""
+    resume = "Contact: github.com/user\nHobbies: Digital art"
+    skills = extract_skills(resume)
+    assert "git" not in skills
+
+def test_deterministic_repeat_execution():
+    """Verifies identical outputs across repeated executions on the same resume and JD."""
+    resume = "Skills: Python, SQL\nProjects:\nBuilt data pipelines using Python and SQL."
+    jd = "Required Skills:\nPython, SQL, Power BI"
+    res1 = compare_skills(resume, jd)
+    res2 = compare_skills(resume, jd)
+    assert res1 == res2
+
+def test_backend_capability_requires_core_backend_skill():
+    """Ensures Python + SQL alone without a backend framework caps at Partial Alignment."""
+    caps = analyze_job_relevant_capabilities(
+        resume_skills=["python", "sql"],
+        job_skills=["python", "sql"],
+        skill_evidence_levels={
+            "python": {"status": "demonstrated", "confidence": 1.0},
+            "sql": {"status": "demonstrated", "confidence": 1.0},
+        }
+    )
+    be = next(c for c in caps if c["capability"] == "Backend Development")
+    assert be["alignment"] == "Partial Alignment"
+    assert be["coverage"] <= 55.0

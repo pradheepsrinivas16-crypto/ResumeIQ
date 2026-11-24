@@ -93,7 +93,9 @@ SKILL_ALIASES = {
     "computer vision": ["computer vision", "computer-vision", "cv"],
     "data analysis": ["data analysis", "data analytics", "data analyst"],
     "data visualization": [
-        "data visualization", "data visualizations", "data visualisation", "data visualisations"
+        "data visualization", "data visualizations", "data visualisation", "data visualisations",
+        "interactive visualizations", "interactive visualization", "visualize business metrics",
+        "visualizing business metrics"
     ],
     "data cleaning": ["data cleaning", "data cleansing", "data preprocessing", "data pre-processing"],
     "exploratory data analysis": ["exploratory data analysis", "exploratory analysis", "eda"],
