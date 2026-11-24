@@ -76,6 +76,14 @@ def generate_candidate_pdf(candidate_name, screening_result, career_recommendati
         parent=body_style,
         fontName="Helvetica-Bold"
     )
+    warning_style = ParagraphStyle(
+        "WarningStyle",
+        parent=styles["Normal"],
+        fontName="Helvetica-Bold",
+        fontSize=8.5,
+        leading=11.5,
+        textColor=colors.HexColor("#b45309")
+    )
 
     story = []
 
@@ -91,6 +99,17 @@ def generate_candidate_pdf(candidate_name, screening_result, career_recommendati
     semantic_score = float(screening_result.get("semantic_score", 0))
     skill_score = float(screening_result.get("skill_score", 0)) if screening_result.get("skill_score_available", True) else 0.0
 
+    fit_label = screening_result.get("fit_label")
+    if not fit_label:
+        if final_score >= 75.0 and skill_score >= 60.0:
+            fit_label = "Strong Fit"
+        elif final_score >= 50.0 and skill_score >= 40.0:
+            fit_label = "Moderate Fit"
+        elif final_score >= 50.0 and skill_score < 40.0:
+            fit_label = "Low Evidence"
+        else:
+            fit_label = "Low Fit"
+
     score_data = [
         [
             Paragraph("<b>Overall Compatibility</b>", body_style),
@@ -102,7 +121,7 @@ def generate_candidate_pdf(candidate_name, screening_result, career_recommendati
             Paragraph(f"<font size=13 color='#2563eb'><b>{final_score:.1f}%</b></font>", body_style),
             Paragraph(f"<font size=11><b>{semantic_score:.1f}%</b></font>", body_style),
             Paragraph(f"<font size=11><b>{skill_score:.1f}%</b></font>", body_style),
-            Paragraph("<b>Strong Fit</b>" if final_score >= 80 else ("<b>Moderate Fit</b>" if final_score >= 50 else "<b>Low Fit</b>"), body_style)
+            Paragraph(f"<b>{fit_label}</b>", body_style)
         ]
     ]
     t_score = Table(score_data, colWidths=[130, 130, 130, 150])
@@ -115,7 +134,14 @@ def generate_candidate_pdf(candidate_name, screening_result, career_recommendati
         ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
     ]))
     story.append(t_score)
-    story.append(Spacer(1, 10))
+    story.append(Spacer(1, 6))
+
+    divergence_msg = screening_result.get("divergence_warning", "")
+    if divergence_msg:
+        story.append(Paragraph(f"Review Notice: {divergence_msg}", warning_style))
+        story.append(Spacer(1, 6))
+    else:
+        story.append(Spacer(1, 4))
 
     # 3. Skills Breakdown
     story.append(Paragraph("Skill Alignment & Evidence Verification", h2_style))
@@ -176,7 +202,6 @@ def generate_candidate_pdf(candidate_name, screening_result, career_recommendati
         p_areas = [f"• <b>{format_skill_display(s)}</b>: Core job competency not verified on resume. Validate academic coursework or practical labs during technical screening." for s in sorted_missing[:3]]
         p_text = "<br/>".join(p_areas)
     elif listed_only_skills:
-        # ACCURATE CLAIM: Candidate has 0 missing, but has listed-only skills
         v_count = len(demonstrated_skills) + len(substitute_skills)
         l_count = len(listed_only_skills)
         p_text = (

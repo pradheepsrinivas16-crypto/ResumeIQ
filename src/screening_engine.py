@@ -127,7 +127,7 @@ RESPONSIBILITY_PATTERNS = [
             "define database schemas",
             "database schemas for optimal data storage"
         ],
-        "related_skills": ["java", "spring boot", "sql", "mysql", "postgresql"]
+        "related_skills": ["spring boot", "django", "fastapi", "node.js", "rest api"]
     },
     {
         "name": "performance tuning",
@@ -156,7 +156,7 @@ RESPONSIBILITY_PATTERNS = [
             "ci/cd pipeline deployments",
             "debug software issues and support ci/cd"
         ],
-        "related_skills": ["ci/cd", "git", "docker"]
+        "related_skills": ["ci/cd", "docker", "jenkins", "github actions"]
     },
     {
         "name": "predictive modeling and ml",
@@ -211,7 +211,16 @@ RESPONSIBILITY_PATTERNS = [
             "pandas and numpy"
         ],
         "related_skills": ["exploratory data analysis", "statistical analysis", "pandas", "numpy", "python"]
-    }
+    },
+    {
+        "name": "git version control workflows",
+        "patterns": [
+            "collaborate using git",
+            "git version control workflows",
+            "version control workflows"
+        ],
+        "related_skills": ["git", "github", "gitlab"]
+    },
 ]
 
 
@@ -277,7 +286,6 @@ def analyze_job_responsibilities(resume_text, job_description, skill_evidence_le
             })
             continue
 
-        # Evaluate each related skill using its exact evidence tier
         matched_tiers = []
         for sk in rule["related_skills"]:
             ev = classify_skill_evidence(resume_text, sk)
@@ -295,7 +303,6 @@ def analyze_job_responsibilities(resume_text, job_description, skill_evidence_le
             })
             continue
 
-        # Determine highest evidence tier among matched skills
         has_demonstrated = any(t[1] == "demonstrated" for t in matched_tiers)
         has_supporting = any(t[1] in {"supporting", "substitute"} for t in matched_tiers)
 
@@ -319,7 +326,6 @@ def analyze_job_responsibilities(resume_text, job_description, skill_evidence_le
             })
         else:
             list_items = [t for t in matched_tiers if t[1] == "listed"]
-            # Deduplicate redundant database/sql aliases if derived from mysql/postgresql
             raw_names = [t[0] for t in list_items]
             if "mysql" in raw_names:
                 list_items = [t for t in list_items if t[0] == "mysql"]
@@ -347,6 +353,26 @@ def analyze_job_responsibilities(resume_text, job_description, skill_evidence_le
     }
 
 
+def get_fit_tier_and_divergence(final_score, semantic_score, skill_score):
+    divergence = round(semantic_score - skill_score, 1)
+    has_divergence_warning = divergence > 30.0
+    divergence_msg = (
+        f"High semantic similarity ({semantic_score:.1f}%) but low verified skill evidence ({skill_score:.1f}%) — review manually."
+        if has_divergence_warning else ""
+    )
+
+    if final_score >= 75.0 and skill_score >= 60.0:
+        fit_label = "Strong Fit"
+    elif final_score >= 50.0 and skill_score >= 40.0:
+        fit_label = "Moderate Fit"
+    elif final_score >= 50.0 and skill_score < 40.0:
+        fit_label = "Low Evidence"
+    else:
+        fit_label = "Low Fit"
+
+    return fit_label, has_divergence_warning, divergence_msg
+
+
 def screen_resume(resume_text, job_description):
     semantic_score = calculate_match_score(resume_text, job_description)
     skill_result = compare_skills(resume_text, job_description)
@@ -369,6 +395,10 @@ def screen_resume(resume_text, job_description):
         semantic_score,
         skill_score,
         skill_score_available
+    )
+
+    fit_label, has_divergence_warning, divergence_msg = get_fit_tier_and_divergence(
+        final_score, semantic_score, skill_score
     )
 
     bert_categories = predict_top_categories(resume_text, top_k=3)
@@ -396,6 +426,9 @@ def screen_resume(resume_text, job_description):
         "semantic_score": semantic_score,
         "skill_score": skill_score,
         "skill_score_available": skill_score_available,
+        "fit_label": fit_label,
+        "has_divergence_warning": has_divergence_warning,
+        "divergence_warning": divergence_msg,
         "category": category,
         "category_confidence": category_confidence,
         "bert_categories": bert_categories,

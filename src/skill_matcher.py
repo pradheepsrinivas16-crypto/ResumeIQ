@@ -348,6 +348,7 @@ def extract_skill_snippet(text, aliases, max_len=280):
     else:
         exact_line = extract_matching_line(text, aliases)
         return (exact_line, False)
+
     if len(chosen) > max_len:
         cut = chosen[:max_len]
         punct_pos = max(cut.rfind("."), cut.rfind(";"), cut.rfind(","))
@@ -437,7 +438,6 @@ def classify_skill_evidence(resume_text, skill, is_substitute_lookup=False):
     supporting_found = [s for s in found_sections if s in supporting_sections]
     if supporting_found:
         substantive_body = "\n".join(sections[k] for k in supporting_found if k in sections)
-        # ALWAYS extract the exact line containing the matched alias, NEVER lines[0]
         exact_line = extract_matching_line(substantive_body, aliases)
         if not exact_line:
             exact_line, _ = extract_skill_snippet(substantive_body, aliases)
@@ -449,6 +449,33 @@ def classify_skill_evidence(resume_text, skill, is_substitute_lookup=False):
             "confidence": 0.70,
         }
 
+    candidate_all_skills = extract_skills(resume_text)
+
+    if skill == "database":
+        via_db = None
+        for db_cand in ["mysql", "postgresql", "mongodb", "sql"]:
+            if db_cand in candidate_all_skills:
+                via_db = db_cand
+                break
+        if "skills" in found_sections:
+            skills_line = extract_matching_line(sections.get("skills", ""), aliases)
+            via_tag = f" (via {format_skill_display(via_db)})" if via_db else ""
+            return {
+                "status": "listed",
+                "sections": ["skills"],
+                "snippet": f"{skills_line}{via_tag}",
+                "confidence": 0.40,
+            }
+        elif via_db:
+            via_disp = format_skill_display(via_db)
+            db_line = extract_matching_line(sections.get("skills", ""), [via_db])
+            return {
+                "status": "listed",
+                "sections": ["skills"],
+                "snippet": f"{db_line} (via {via_disp})" if db_line else f"Found in Skills inventory (via {via_disp}).",
+                "confidence": 0.40,
+            }
+
     # Check if directly in skills list BEFORE checking substitute tools
     if "skills" in found_sections:
         skills_line = extract_matching_line(sections.get("skills", ""), aliases)
@@ -459,8 +486,6 @@ def classify_skill_evidence(resume_text, skill, is_substitute_lookup=False):
             "confidence": 0.40,
         }
 
-    candidate_all_skills = extract_skills(resume_text)
-    
     # Substitute Tool Check (ONLY when target skill itself is missing from resume)
     if not is_substitute_lookup:
         substitute_tool = find_equivalent_skill(skill, candidate_all_skills)
@@ -475,11 +500,11 @@ def classify_skill_evidence(resume_text, skill, is_substitute_lookup=False):
                 "status": effective_status,
                 "sections": sub_ev.get("sections", ["skills"]),
                 "substitute_tool": substitute_tool,
-                "snippet": sub_ev.get("snippet", ""), # Strictly verbatim quote from underlying tool!
+                "snippet": sub_ev.get("snippet", ""),
                 "confidence": effective_weight,
             }
 
-    if skill in {"sql", "database"} and ("mysql" in candidate_all_skills or "postgresql" in candidate_all_skills):
+    if skill == "sql" and ("mysql" in candidate_all_skills or "postgresql" in candidate_all_skills):
         via_db = "mysql" if "mysql" in candidate_all_skills else "postgresql"
         via_disp = format_skill_display(via_db)
         db_line = extract_matching_line(sections.get("skills", ""), [via_db])
@@ -489,6 +514,7 @@ def classify_skill_evidence(resume_text, skill, is_substitute_lookup=False):
             "snippet": f"{db_line} (via {via_disp})" if db_line else f"Found in Skills inventory (via {via_disp}).",
             "confidence": 0.40,
         }
+
     return {
         "status": "missing",
         "sections": [],
@@ -623,9 +649,13 @@ def parse_job_skill_sections(job_description, candidate_skills=None):
                 if other in required_skills:
                     required_skills.remove(other)
 
-    # 7. Backend Framework Alternatives
+    # 7. Backend Framework Alternatives (e.g. "Spring Boot, or Python (FastAPI/Django)")
     fw_group = {"django", "fastapi", "node.js", "spring boot"}.intersection(set(required_skills))
-    if len(fw_group) > 1 and any(p in lower_jd for p in ["e.g., node.js", "node.js, python, java", "django, fastapi, or", "fastapi or django", "or node.js"]):
+    if len(fw_group) > 1 and any(p in lower_jd for p in [
+        "e.g., node.js", "node.js, python, java", "django, fastapi, or",
+        "fastapi or django", "fastapi/django", "django/fastapi",
+        "spring boot, or python", "or node.js"
+    ]):
         matched_fw = fw_group.intersection(candidate_skills)
         if matched_fw:
             chosen = next(iter(matched_fw))
@@ -633,8 +663,9 @@ def parse_job_skill_sections(job_description, candidate_skills=None):
                 if other != chosen and other in required_skills:
                     required_skills.remove(other)
         else:
-            for other in list(fw_group)[1:]:
-                if other in required_skills:
+            canonical = "spring boot" if "spring boot" in fw_group else next(iter(fw_group))
+            for other in list(fw_group):
+                if other != canonical and other in required_skills:
                     required_skills.remove(other)
 
     return required_skills, preferred_skills

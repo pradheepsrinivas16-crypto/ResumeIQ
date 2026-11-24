@@ -1,4 +1,7 @@
-from src.skill_matcher import SKILL_ALIASES
+try:
+    from src.skill_matcher import SKILL_ALIASES, classify_skill_evidence
+except ImportError:
+    from skill_matcher import SKILL_ALIASES, classify_skill_evidence
 
 ROLE_PROFILES = {
     "Data Analyst": {
@@ -10,7 +13,7 @@ ROLE_PROFILES = {
         "core": ["sql", "power bi", "data visualization", "data analysis"],
         "supporting": ["excel", "tableau", "dashboard", "kpi", "python"],
     },
-    # In src/role_suitability.py -> inside ROLE_PROFILES:
+
     "Java Backend Developer": {
         "core": ["java", "spring boot", "sql"],
         "supporting": ["mysql", "postgresql", "rest api", "git", "docker"],
@@ -36,7 +39,6 @@ ROLE_PROFILES = {
     },
 
     "Full Stack Developer": {
-        # Covers both Modern JS (React/Node) and Enterprise (Java/Spring Boot/Angular)
         "core": ["javascript", "html", "css", "sql"],
         "supporting": ["java", "spring boot", "angular", "react", "node.js", "mysql", "rest api", "git"],
         "hard_gate_frontend": {"html", "javascript", "react", "angular"},
@@ -86,7 +88,7 @@ def canonicalize_resume_skills(resume_skills):
 
     return canonical_skills
 
-def calculate_role_suitability(resume_skills, role_name, skill_evidence_levels=None):
+def calculate_role_suitability(resume_skills, role_name, skill_evidence_levels=None, resume_text=None):
     if role_name not in ROLE_PROFILES:
         raise ValueError(f"Unknown role: {role_name}")
 
@@ -136,6 +138,12 @@ def calculate_role_suitability(resume_skills, role_name, skill_evidence_levels=N
             }
 
     def get_evidence_weight(skill):
+        # Strictly JD-independent lookup directly from resume_text when available
+        if resume_text:
+            ev = classify_skill_evidence(resume_text, skill)
+            st = str(ev.get("status", "missing")).strip().lower()
+            return EVIDENCE_WEIGHTS.get(st, 0.0)
+
         if not ev_levels:
             return 1.0 if skill in candidate_skills else 0.0
         ev = ev_levels.get(skill)
@@ -184,12 +192,13 @@ def calculate_role_suitability(resume_skills, role_name, skill_evidence_levels=N
         "supporting_missing": sorted(list(supporting_required - candidate_skills)),
     }
 
-def recommend_roles(resume_skills, skill_evidence_levels=None):
+def recommend_roles(resume_skills, skill_evidence_levels=None, resume_text=None):
     results = [
         calculate_role_suitability(
             resume_skills,
             role_name,
-            skill_evidence_levels=skill_evidence_levels
+            skill_evidence_levels=skill_evidence_levels,
+            resume_text=resume_text
         )
         for role_name in ROLE_PROFILES
     ]

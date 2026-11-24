@@ -12,7 +12,7 @@ if SRC_PATH not in sys.path:
     sys.path.append(SRC_PATH)
 
 from src.resume_parser import extract_resume_text
-from src.screening_engine import screen_resume
+from src.screening_engine import screen_resume, get_fit_tier_and_divergence
 from src.skill_matcher import SKILL_ALIASES, find_equivalent_skill, format_skill_display
 from src.role_suitability import recommend_roles
 from src.capability_engine import analyze_job_relevant_capabilities
@@ -28,7 +28,6 @@ st.set_page_config(
 
 apply_custom_css()
 
-# Centrality ordering for skills display
 JD_CENTRALITY = [
     "rest api", "react", "sql", "power bi", "javascript", "html", "css",
     "dashboard", "data analysis", "python", "excel", "responsive web design",
@@ -184,7 +183,9 @@ if screening_mode == "Single Candidate Deep-Dive":
                         f.write(uploaded_file.getbuffer())
 
                     resume_text = extract_resume_text(temp_path)
-                    st.session_state["result"] = screen_resume(resume_text, job_description)
+                    res = screen_resume(resume_text, job_description)
+                    res["raw_resume_text"] = resume_text
+                    st.session_state["result"] = res
                     st.session_state["resume_name"] = uploaded_file.name
                     st.session_state["active_jd_preview"] = job_description[:120].strip() + "..."
             except Exception as e:
@@ -254,11 +255,13 @@ else:
 
                     text = extract_resume_text(temp_path)
                     res = screen_resume(text, batch_job_description)
+                    res["raw_resume_text"] = text
 
                     clean_name = re.sub(r"\s*\(\d+\)", "", file.name)
 
                     leaderboard_records.append({
                         "Candidate File": clean_name,
+                        "Fit Tier": res.get("fit_label", "Low Fit"),
                         "Overall Score (%)": round(float(res.get("final_score", 0)), 1),
                         "Semantic Score (%)": round(float(res.get("semantic_score", 0)), 1),
                         "Skill Coverage (%)": round(float(res.get("skill_score", 0)), 1) if res.get("skill_score_available", True) else 0.0,
@@ -296,7 +299,9 @@ if screening_mode == "Multi-Resume Batch Leaderboard" and "batch_results" in st.
     )
 
     batch_list = st.session_state["batch_results"]
-    df_board = pd.DataFrame(batch_list).sort_values(by="Overall Score (%)", ascending=False).reset_index(drop=True)
+    df_board = pd.DataFrame(batch_list).sort_values(
+        by=["Overall Score (%)", "Skill Coverage (%)"], ascending=[False, False]
+    ).reset_index(drop=True)
 
     ctrl_col1, ctrl_col2 = st.columns([2, 1])
     with ctrl_col1:
@@ -334,6 +339,7 @@ if screening_mode == "Multi-Resume Batch Leaderboard" and "batch_results" in st.
             column_config={
                 "Rank": st.column_config.TextColumn("Rank", width="small"),
                 "Candidate File": st.column_config.TextColumn("Candidate", width="medium"),
+                "Fit Tier": st.column_config.TextColumn("Status", width="small"),
                 "Overall Fit": st.column_config.ProgressColumn(
                     "Overall Fit", format="%.1f%%", min_value=0, max_value=100
                 ),
@@ -398,14 +404,20 @@ if "result" in st.session_state:
     skill_score_available = bool(req_skills_list)
     final_score = (semantic_score * 0.60 + skill_score * 0.40) if skill_score_available else semantic_score
 
+    fit_label, has_divergence_warning, divergence_msg = get_fit_tier_and_divergence(
+        final_score, semantic_score, skill_score
+    )
+
     result["final_score"] = final_score
     result["skill_score"] = skill_score
     result["semantic_score"] = semantic_score
+    result["fit_label"] = fit_label
+    result["has_divergence_warning"] = has_divergence_warning
+    result["divergence_warning"] = divergence_msg
 
     candidate_label = st.session_state.get("resume_name", "Candidate")
     clean_candidate_title = re.sub(r"\s*\(\d+\)", "", str(candidate_label)).replace(".pdf", "")
 
-    # STRICT INVARIANCE: Career Pathways are evaluated against the global resume skills, NOT just JD skills
     career_recs_pdf = get_alternative_pathways(
         result.get("resume_skills", []),
         skill_evidence_levels=skill_evidence_levels
@@ -452,7 +464,7 @@ if "result" in st.session_state:
             render_html(
                 f"""
                 <div class="score-hero">
-                    <div class="score-label">Overall Compatibility</div>
+                    <div class="score-label">Overall Compatibility • {fit_label}</div>
                     <div class="score-number">{final_score:.1f}%</div>
                     <div class="score-caption" style="color:#94a3b8;">
                         Calculated from dense semantic alignment (60%) and evidence-weighted skill coverage (40%).
@@ -531,6 +543,10 @@ if "result" in st.session_state:
                     unsafe_allow_html=True
                 )
 
+        if has_divergence_warning:
+            st.write("")
+            st.warning(f"⚠️ **Semantic vs. Evidence Divergence:** {divergence_msg}")
+
         st.write("")
         semantic_contribution = semantic_score * 0.60
         skill_contribution = skill_score * 0.40
@@ -543,7 +559,7 @@ if "result" in st.session_state:
                     <strong>Formula:</strong> (Semantic Score × 60%) + (Skill Coverage × 40%)<br><br>
                     • <strong>Semantic Alignment:</strong> {semantic_score:.1f}% × 60% = {semantic_contribution:.1f} points<br>
                     • <strong>Evidence-Weighted Skills:</strong> {skill_score:.1f}% × 40% = {skill_contribution:.1f} points<br><br>
-                    <strong>Final Compatibility = {final_score:.1f}%</strong>
+                    <strong>Final Compatibility = {final_score:.1f}% ({fit_label})</strong>
                 </div>
             </div>
             """,
@@ -689,22 +705,22 @@ if "result" in st.session_state:
 
                 with evidence_col2:
                     if listed:
-                     st.markdown("#### 🔵 Listed Only (0.40x Partial Credit)")
-                     for skill, evidence in listed:
-                         disp_name = format_skill_display(skill)
-                         list_reason = evidence.get("snippet") or "Found only in Skills section without active project sentence context."
-                         render_html(
-                             f"""
-                             <div class="explanation-card" style="margin-bottom:10px;">
-                                 <div class="explanation-title">• {disp_name}</div>
-                                 <div class="explanation-text" style="color:#cbd5e1;">
-                                     <strong>Status: Listed Only (0.40x)</strong><br>
-                                     {list_reason}
-                                 </div>
-                             </div>
-                             """,
-                             unsafe_allow_html=True
-                         )
+                        st.markdown("#### 🔵 Listed Only (0.40x Partial Credit)")
+                        for skill, evidence in listed:
+                            disp_name = format_skill_display(skill)
+                            list_reason = evidence.get("snippet") or "Found only in Skills section without active project sentence context."
+                            render_html(
+                                f"""
+                                <div class="explanation-card" style="margin-bottom:10px;">
+                                    <div class="explanation-title">• {disp_name}</div>
+                                    <div class="explanation-text" style="color:#cbd5e1;">
+                                        <strong>Status: Listed Only (0.40x)</strong><br>
+                                        {list_reason}
+                                    </div>
+                                </div>
+                                """,
+                                unsafe_allow_html=True
+                            )
 
                     if missing:
                         st.markdown("#### 🔴 Missing Requirements (0.0x)")
@@ -754,14 +770,14 @@ if "result" in st.session_state:
         subs_map = {s: ev.get("substitute_tool", "Eq") for s, ev in substitutes}
         supp_ev_map = {s: ev for s, ev in supporting}
         interview_questions = generate_interview_questions(
-         missing_skills=[s for s, ev in missing],
-         substituted_skills=subs_map,
-         supporting_skills=[s for s, ev in supporting],
-         listed_skills=[s for s, ev in listed],
-         demonstrated_skills=[s for s, ev in demonstrated],
-         final_score=final_score,
-         supporting_evidence_map=supp_ev_map
-     )
+            missing_skills=[s for s, ev in missing],
+            substituted_skills=subs_map,
+            supporting_skills=[s for s, ev in supporting],
+            listed_skills=[s for s, ev in listed],
+            demonstrated_skills=[s for s, ev in demonstrated],
+            final_score=final_score,
+            supporting_evidence_map=supp_ev_map
+        )
 
         if interview_questions:
             st.write("")
@@ -880,7 +896,6 @@ if "result" in st.session_state:
     # TAB 4: CAREER & ROLE FIT
     # --------------------------------------------------------
     with tab_career:
-        # STRICT INVARIANCE: Career Pathways are evaluated against global candidate skills
         career_recs = get_alternative_pathways(
             result.get("resume_skills", []),
             skill_evidence_levels=skill_evidence_levels
@@ -921,7 +936,8 @@ if "result" in st.session_state:
         st.caption("Evidence-weighted candidate fit evaluated against standardized global role benchmark profiles (independent of target JD).")
         role_recommendations = recommend_roles(
             result.get("resume_skills", []),
-            skill_evidence_levels=skill_evidence_levels
+            skill_evidence_levels=skill_evidence_levels,
+            resume_text=result.get("raw_resume_text")
         )
 
         if role_recommendations:

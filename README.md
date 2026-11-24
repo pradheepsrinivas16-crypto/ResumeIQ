@@ -284,6 +284,8 @@ python -m streamlit run app.py
 
 ResumeIQ is designed strictly as an augmented decision-support system. Compatibility scores, BERT classifications, and detected capabilities are heuristic indicators. Automated employment rejections or hiring choices should never be made solely on algorithmic outputs. Human review remains essential in all hiring processes.
 
+- **Semantic Topic Overlap vs. Role Evidence (Documented Failure Case)**: On a Backend Engineer JD, a data-analytics resume (75.4% semantic similarity, 26.0% evidence coverage → 55.6% overall) outscored a backend full-stack intern resume (65.3% semantic similarity, 29.0% evidence coverage → 50.8% overall) by 4.8 points because dense embedding similarity responds strongly to shared technical vocabulary (Python, SQL, data storage) and denser bullet prose, whereas sparse internship titles carry lower embedding density. To prevent misleading rankings, ResumeIQ enforces two guardrails: (1) any candidate with $\ge 50\%$ overall compatibility but $< 40\%$ verified skill coverage is labeled **Low Evidence** rather than **Moderate Fit**, and (2) whenever $\text{Semantic Score} - \text{Skill Coverage} > 30\text{ percentage points}$, an explicit manual-review divergence warning is surfaced in both the UI and PDF brief.
+
 ---
 
 # Project Status
