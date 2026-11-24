@@ -100,7 +100,12 @@ def generate_interview_questions(
 
         if "projects" in sections:
             proj_title = snippet.split("(")[0].strip() if "(" in snippet else "your project"
-            q_text = f"{disp} appears in {proj_title}'s tech list. What specific modules, logic, or functions did you implement in {disp} there?"
+            if skill in {"css", "html", "figma", "adobe xd", "ui/ux", "responsive web design"}:
+                deliverable_phrase = "layouts, components, or styles"
+            else:
+                deliverable_phrase = "modules, logic, or functions"
+
+            q_text = f"{disp} appears in {proj_title}'s tech list. What specific {deliverable_phrase} did you implement in {disp} there?"
             q_type = "Project Tech-List Verification"
         else:
             q_text = f"You have {disp} listed under your internship or educational experience. What specific features, interfaces, or deliverables did you build with {disp} during that period?"

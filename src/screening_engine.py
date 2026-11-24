@@ -14,8 +14,7 @@ try:
         compare_skills,
         extract_skills,
         normalize_text,
-        extract_resume_sections,
-        find_contextual_skill_evidence,
+        classify_skill_evidence,
         format_skill_display,
     )
     from src.bert_category_predictor import predict_top_categories
@@ -27,36 +26,19 @@ except ImportError:
         compare_skills,
         extract_skills,
         normalize_text,
-        extract_resume_sections,
-        find_contextual_skill_evidence,
+        classify_skill_evidence,
         format_skill_display,
     )
     from bert_category_predictor import predict_top_categories
     from recommendations import generate_recommendations
     from capability_engine import analyze_capabilities
-except ImportError:
-    from job_matcher import calculate_match_score
-    from skill_matcher import (
-        compare_skills,
-        extract_skills,
-        normalize_text,
-        extract_resume_sections,
-        find_contextual_skill_evidence,
-    )
-    from bert_category_predictor import predict_top_categories
-    from recommendations import generate_recommendations
-    from capability_engine import analyze_capabilities
 
-def calculate_skill_score(
-    matched_skills,
-    required_skills,
-    skill_evidence_levels=None
-):
+
+def calculate_skill_score(matched_skills, required_skills, skill_evidence_levels=None):
     if not required_skills:
         return 0.0
 
     skill_evidence_levels = skill_evidence_levels or {}
-
     evidence_weights = {
         "demonstrated": 1.00,
         "substitute": 0.75,
@@ -84,225 +66,165 @@ def calculate_final_score(
 ):
     if not skill_score_available:
         return semantic_score
-
-    return (
-        semantic_score * semantic_weight
-        + skill_score * skill_weight
-    )
+    return (semantic_score * semantic_weight + skill_score * skill_weight)
 
 
 RESPONSIBILITY_PATTERNS = [
     {
+        "name": "responsive web development",
+        "patterns": [
+            "develop responsive web applications",
+            "responsive web applications",
+            "responsive web development",
+            "html, css, and javascript"
+        ],
+        "related_skills": ["responsive web design", "html", "css", "javascript"]
+    },
+    {
+        "name": "frontend framework development",
+        "patterns": [
+            "build modular ui components",
+            "modern frontend frameworks",
+            "react or angular",
+            "interactive frontend applications"
+        ],
+        "related_skills": ["react", "angular", "javascript"]
+    },
+    {
+        "name": "ui ux design collaboration",
+        "patterns": [
+            "collaborate with designers",
+            "translate figma",
+            "adobe xd wireframes",
+            "intuitive user experiences"
+        ],
+        "related_skills": ["figma", "adobe xd", "ui/ux"]
+    },
+    {
+        "name": "api integration and version control",
+        "patterns": [
+            "integrate frontend applications with backend rest apis",
+            "manage source code using git",
+            "backend rest apis"
+        ],
+        "related_skills": ["rest api", "git"]
+    },
+    {
         "name": "api development",
         "patterns": [
-            "api development",
             "restful or graphql apis",
             "scalable restful or graphql apis",
             "restful apis",
             "graphql apis",
-            "rest apis",
-            "api endpoints"
+            "rest apis"
         ],
-        "related_skills": [
-            "rest api",
-            "graphql",
-            "node.js",
-            "fastapi",
-            "flask",
-            "spring boot"
-        ]
+        "related_skills": ["rest api", "graphql", "node.js", "fastapi", "flask", "spring boot"]
     },
     {
         "name": "system architecture and db schemas",
         "patterns": [
-            "architecture & system design",
             "architect clean, maintainable server-side code",
-            "server-side code and define database schemas",
-            "database schemas for optimal data storage",
-            "database schemas",
-            "system architecture"
+            "define database schemas",
+            "database schemas for optimal data storage"
         ],
-        "related_skills": [
-            "java",
-            "spring boot",
-            "sql",
-            "mysql",
-            "postgresql",
-            "database"
-        ]
+        "related_skills": ["java", "spring boot", "sql", "mysql", "postgresql"]
     },
     {
         "name": "performance tuning",
         "patterns": [
-            "performance tuning",
             "optimize backend systems",
             "speed, scalability, and efficiency",
-            "high traffic volume",
-            "performance optimization"
+            "high traffic volume"
         ],
-        "related_skills": [
-            "java",
-            "sql",
-            "python",
-            "redis"
-        ]
+        "related_skills": ["java", "sql", "python", "redis"]
     },
     {
         "name": "security and compliance",
         "patterns": [
-            "security & compliance",
             "user authentication",
             "oauth",
             "jwt",
             "secure authorization protocols",
             "data protection"
         ],
-        "related_skills": [
-            "rest api",
-            "java",
-            "spring boot",
-            "node.js"
-        ]
+        "related_skills": ["rest api", "java", "spring boot", "node.js"]
     },
     {
         "name": "testing and deployment",
         "patterns": [
-            "testing & deployment",
             "unit and integration tests",
             "ci/cd pipeline deployments",
-            "ci/cd pipeline",
             "debug software issues and support ci/cd"
         ],
-        "related_skills": [
-            "ci/cd",
-            "git",
-            "docker"
-        ]
+        "related_skills": ["ci/cd", "git", "docker"]
     },
     {
         "name": "predictive modeling and ml",
         "patterns": [
             "build predictive models",
             "predictive models and machine learning",
-            "machine learning algorithms",
-            "predictive modeling",
-            "build predictive models and machine learning algorithms"
+            "machine learning algorithms"
         ],
-        "related_skills": [
-            "machine learning",
-            "predictive modeling",
-            "scikit-learn",
-            "deep learning",
-            "python"
-        ]
+        "related_skills": ["machine learning", "predictive modeling", "scikit-learn", "deep learning", "python"]
     },
     {
         "name": "data cleaning and aggregation",
         "patterns": [
             "clean, aggregate, and analyze data",
             "disparate sources",
-            "clean and aggregate",
-            "data cleaning and preprocessing"
+            "clean and aggregate"
         ],
-        "related_skills": [
-            "data cleaning",
-            "data analysis",
-            "sql",
-            "python",
-            "excel"
-        ]
+        "related_skills": ["data cleaning", "data analysis", "sql", "python", "excel"]
     },
     {
         "name": "business insights and kpis",
         "patterns": [
             "present data-driven insights",
             "strategic recommendations to stakeholders",
-            "insights and strategic recommendations",
-            "kpi metrics",
-            "business stakeholders"
+            "kpi metrics"
         ],
-        "related_skills": [
-            "kpi",
-            "data analysis",
-            "power bi",
-            "excel",
-            "tableau"
-        ]
-    },
-    {
-        "name": "ui ux design collaboration",
-        "patterns": [
-            "collaborate with designers",
-            "translate wireframes",
-            "wireframes into intuitive user experiences",
-            "design systems"
-        ],
-        "related_skills": [
-            "ui/ux",
-            "figma",
-            "adobe xd",
-            "css",
-            "html"
-        ]
+        "related_skills": ["kpi", "data analysis", "power bi", "excel", "tableau"]
     },
     {
         "name": "dashboard development",
         "patterns": [
             "interactive dashboards",
             "dashboards and reports",
-            "dashboards to track",
-            "power bi dashboards"
+            "power bi and excel"
         ],
-        "related_skills": [
-            "power bi",
-            "tableau",
-            "excel",
-            "dashboard",
-            "data visualization"
-        ]
+        "related_skills": ["power bi", "tableau", "excel", "dashboard", "data visualization"]
     },
     {
         "name": "sql data querying",
         "patterns": [
             "query relational databases",
             "relational databases using sql",
-            "using sql to extract",
-            "querying"
+            "using sql to extract"
         ],
-        "related_skills": [
-            "sql",
-            "mysql",
-            "database"
-        ]
+        "related_skills": ["sql", "mysql", "database"]
     },
     {
-        "name": "version control",
+        "name": "exploratory data analysis",
         "patterns": [
-            "git and github",
-            "git/github",
-            "version control",
-            "collaborative development",
-            "git workflows"
+            "exploratory data analysis",
+            "statistical modeling",
+            "pandas and numpy"
         ],
-        "related_skills": [
-            "git",
-            "github"
-        ]
+        "related_skills": ["exploratory data analysis", "statistical analysis", "pandas", "numpy", "python"]
     }
 ]
 
 
 def extract_job_responsibilities(job_description):
+    """Extracts ONLY duty bullets under 'Responsibilities', halting before 'Required Skills'."""
     text = str(job_description or "").replace("\r", "\n")
     responsibilities = []
     in_responsibilities = False
 
-    # STRICT STOPS: Never parse qualification headings, education, or core languages as responsibilities!
     section_stops = {
-        "required qualifications & skills", "required qualifications and skills",
-        "required qualifications", "key requirements", "qualifications",
-        "requirements", "education", "education:", "core languages", "core languages:",
-        "preferred skills", "nice to have"
+        "required skills", "required skill", "required qualifications",
+        "required qualifications & skills", "key requirements", "qualifications",
+        "requirements", "education", "core languages", "preferred skills", "nice to have"
     }
 
     lines = text.splitlines()
@@ -311,117 +233,36 @@ def extract_job_responsibilities(job_description):
         if not raw_clean:
             continue
 
-        clean = raw_clean.lstrip("•-* \t")
         heading = re.sub(r"^[\s•\-*#●]+", "", raw_clean).rstrip(":").strip().lower()
 
         if heading in {
-            "responsibilities", "responsibility", "job responsibilities", 
+            "responsibilities", "responsibility", "job responsibilities",
             "key responsibilities", "core responsibilities", "what you'll do", "what you will do"
         }:
             in_responsibilities = True
             continue
 
         if in_responsibilities:
-            # Stop if we hit a new major section header
-            if any(stop_heading in heading for stop_heading in section_stops):
-                in_responsibilities = False
+            if heading in section_stops or any(heading.startswith(s) for s in section_stops):
                 break
-            
-            # Guard against lines formatted like 'Education: Bachelor's' or 'Core Languages: ...'
-            if re.match(r"^(education|core languages|required qualifications|requirements):", heading):
-                in_responsibilities = False
-                break
-
-            if len(clean) > 12:
-                responsibilities.append(clean)
-
-    if not responsibilities:
-        action_verb_pattern = r"^(Build|Develop|Design|Implement|Manage|Lead|Collaborate|Create|Maintain|Query|Integrate|Optimize|Drive|Architect|Analyze|Conduct|Write|Clean|Present)\b"
-        for line in lines:
-            clean = line.strip().lstrip("•-* \t")
-            if re.search(action_verb_pattern, clean, flags=re.I) and len(clean) > 20:
-                responsibilities.append(clean)
+            clean_bullet = raw_clean.lstrip("•-* \t").strip()
+            if len(clean_bullet) > 12:
+                responsibilities.append(clean_bullet)
 
     return responsibilities[:8]
 
 
 def find_responsibility_rule(responsibility):
     normalized = normalize_text(responsibility)
-    priority = [
-        "api development",
-        "system architecture and db schemas",
-        "performance tuning",
-        "security and compliance",
-        "testing and deployment",
-        "predictive modeling and ml",
-        "data cleaning and aggregation",
-        "dashboard development",
-        "ui ux design collaboration",
-        "sql data querying",
-        "business insights and kpis",
-        "version control"
-    ]
-
-    ordered_rules = sorted(
-        RESPONSIBILITY_PATTERNS,
-        key=lambda rule: priority.index(rule["name"]) if rule["name"] in priority else len(priority)
-    )
-
-    for rule in ordered_rules:
+    for rule in RESPONSIBILITY_PATTERNS:
         for pattern in rule["patterns"]:
             if normalize_text(pattern) in normalized:
                 return rule
-
     return None
-
-
-def _build_substantive_resume_text(resume_text):
-    text = str(resume_text or "").replace("\r", "\n")
-    lines = text.splitlines()
-    output = []
-    in_skills = False
-
-    skill_headings = {
-        "skills", "technical skills", "technical skills & tools", "skills & tools", "core skills",
-    }
-
-    section_headings = {
-        "education", "experience", "work experience", "internships", "projects",
-        "project", "certifications", "certification", "achievements", "extracurricular",
-        "profile", "summary", "objective", "languages", "hobbies",
-    }
-
-    for raw_line in lines:
-        line = raw_line.strip()
-        if not line:
-            continue
-
-        heading = re.sub(r"^[\s\-•*]+", "", line).rstrip(":").strip().lower()
-        if heading in skill_headings:
-            in_skills = True
-            continue
-
-        if in_skills and heading in section_headings:
-            in_skills = False
-
-        if in_skills or re.search(r"https?://|www\.|@", line, flags=re.I):
-            continue
-
-        output.append(line)
-
-    return "\n".join(output)
 
 
 def analyze_job_responsibilities(resume_text, job_description, skill_evidence_levels=None):
     responsibilities = extract_job_responsibilities(job_description)
-    evidence_text = _build_substantive_resume_text(resume_text)
-    normalized_resume = normalize_text(evidence_text)
-
-    try:
-        resume_skills = set(extract_skills(resume_text))
-    except Exception:
-        resume_skills = set()
-
     results = []
 
     for responsibility in responsibilities:
@@ -436,83 +277,56 @@ def analyze_job_responsibilities(resume_text, job_description, skill_evidence_le
             })
             continue
 
-        direct_patterns = []
-        if rule["name"] == "api development":
-            direct_patterns = ["rest api", "restful api", "rest apis", "restful apis", "api endpoints"]
-        elif rule["name"] == "system architecture and db schemas":
-            # Exclude loose 'architect' keyword to avoid false-matching AWS Cloud Architecting certifications
-            direct_patterns = [
-                "server-side code", "database schemas", "system architecture", 
-                "architected server", "database design and architecture"
-            ]
-        elif rule["name"] == "predictive modeling and ml":
-            direct_patterns = ["machine learning-based", "machine learning", "prediction and academic", "predictive modeling", "random forest"]
-        elif rule["name"] == "data cleaning and aggregation":
-            direct_patterns = ["analyzed large, multi-source datasets", "multi-source datasets using python and sql", "clean and aggregate"]
-        elif rule["name"] == "business insights and kpis":
-            direct_patterns = ["designed and built interactive power bi dashboards", "track key performance indicators", "support data-driven business decisions"]
-        elif rule["name"] == "sql data querying":
-            direct_patterns = ["datasets using python and sql", "query relational databases"]
-        elif rule["name"] == "version control":
-            direct_patterns = ["git version control", "git workflows"]
+        # Evaluate each related skill using its exact evidence tier
+        matched_tiers = []
+        for sk in rule["related_skills"]:
+            ev = classify_skill_evidence(resume_text, sk)
+            st = ev.get("status", "missing")
+            if st != "missing":
+                matched_tiers.append((sk, st, ev.get("snippet", "")))
 
-        raw_direct = []
-        for pattern in direct_patterns:
-            normalized_pattern = normalize_text(pattern)
-            if normalized_pattern and normalized_pattern in normalized_resume:
-                raw_direct.append(pattern)
-
-        unique_direct = []
-        for pat in sorted(raw_direct, key=len, reverse=True):
-            if not any(pat in existing for existing in unique_direct):
-                unique_direct.append(pat)
-
-        direct_evidence = [{
-            "evidence": pat,
-            "source": "experience/project/education"
-        } for pat in unique_direct]
-
-        related_evidence = []
-        for related_skill in rule["related_skills"]:
-            if related_skill not in resume_skills:
-                continue
-            try:
-                skill_evidence = find_contextual_skill_evidence(evidence_text, related_skill)
-            except Exception:
-                skill_evidence = []
-
-            if skill_evidence:
-                related_evidence.append({
-                    "skill": related_skill,
-                    "evidence": skill_evidence
-                })
-
-        if direct_evidence:
-            status = "strong"
-            reason = "The resume contains direct evidence in experience or projects supporting this responsibility."
-        elif rule["name"] == "sql data querying" and ("sql" in resume_skills or "mysql" in resume_skills):
-            status = "related"
-            via_tool = "via MySQL" if "mysql" in resume_skills else "listed only"
-            reason = f"SQL / Database ({via_tool}, no project querying context)"
-            related_evidence.append({
-                "skill": "sql",
-                "evidence": [{"snippet": f"Identified in technical competencies ({via_tool})."}]
+        if not matched_tiers:
+            results.append({
+                "responsibility": responsibility,
+                "status": "missing",
+                "evidence": [],
+                "related_evidence": [],
+                "reason": "No direct or meaningful related evidence was detected in the resume."
             })
-        elif related_evidence:
-            matched_names = ", ".join(format_skill_display(e["skill"]) for e in related_evidence)
-            status = "related"
-            reason = f"Inferred from related technical competency ({matched_names}), without direct project delivery context."
-        else:
-            status = "missing"
-            reason = "No direct or meaningful related evidence was detected in the resume."
+            continue
 
-        results.append({
-            "responsibility": responsibility,
-            "status": status,
-            "evidence": direct_evidence,
-            "related_evidence": related_evidence,
-            "reason": reason,
-        })
+        # Determine highest evidence tier among matched skills
+        has_demonstrated = any(t[1] == "demonstrated" for t in matched_tiers)
+        has_supporting = any(t[1] in {"supporting", "substitute"} for t in matched_tiers)
+
+        if has_demonstrated:
+            dem_items = [t for t in matched_tiers if t[1] == "demonstrated"]
+            results.append({
+                "responsibility": responsibility,
+                "status": "strong",
+                "evidence": [{"evidence": t[2] or format_skill_display(t[0])} for t in dem_items],
+                "related_evidence": [],
+                "reason": "Verified in active work or project sentences."
+            })
+        elif has_supporting:
+            supp_items = [t for t in matched_tiers if t[1] in {"supporting", "substitute"}]
+            results.append({
+                "responsibility": responsibility,
+                "status": "related",
+                "evidence": [],
+                "related_evidence": [{"skill": t[0], "tier_label": "supporting"} for t in supp_items],
+                "reason": f"Supporting context detected ({', '.join(format_skill_display(t[0]) for t in supp_items)})."
+            })
+        else:
+            # Listed Only (0.40x) -> △ labeled 'listed only'
+            list_items = [t for t in matched_tiers if t[1] == "listed"]
+            results.append({
+                "responsibility": responsibility,
+                "status": "related",
+                "evidence": [],
+                "related_evidence": [{"skill": f"{format_skill_display(t[0])} (listed only)", "tier_label": "listed only"} for t in list_items],
+                "reason": f"Matched in technical skills list only ({', '.join(format_skill_display(t[0]) for t in list_items)})."
+            })
 
     summary = {
         "strong": sum(r["status"] == "strong" for r in results),

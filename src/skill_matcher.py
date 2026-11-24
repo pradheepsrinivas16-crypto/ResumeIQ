@@ -52,7 +52,7 @@ SKILL_ALIASES = {
     "typescript": ["typescript", "type script", "ts"],
     "html": ["html", "html5", "hypertext markup language"],
     "css": ["css", "css3", "cascading style sheets"],
-    "react": ["react", "react.js", "reactjs"],
+    "react": ["react", "react.js", "reactjs", "react js"],
     "angular": ["angular", "angularjs", "angular.js"],
     "node.js": ["node.js", "nodejs", "node js"],
     "rest api": ["rest api", "rest apis", "restful api", "restful apis", "rest services", "restful"],
@@ -257,13 +257,22 @@ def clean_evidence_sentence(sentence):
     text = re.sub(r"\s+", " ", text).strip()
     return text
 
+def extract_matching_line(section_text, aliases):
+    """Finds the exact verbatim line containing the skill or any of its aliases."""
+    if not section_text:
+        return ""
+    for line in section_text.splitlines():
+        clean_l = clean_evidence_sentence(line)
+        if not clean_l:
+            continue
+        low_l = clean_l.lower()
+        for alias in aliases:
+            pattern = r"(?<![a-zA-Z0-9])" + re.escape(alias.lower()) + r"(?![a-zA-Z0-9])"
+            if re.search(pattern, low_l):
+                return clean_l
+    return ""
+
 def extract_skill_snippet(text, aliases, max_len=280):
-    """
-    Extracts the most relevant evidence unit for a skill.
-    Returns: (snippet_text, is_demonstrated_bullet)
-    - If found in a dedicated sentence with an action verb -> (text, True)
-    - If found only in a parenthetical tech tag or header -> (text, False)
-    """
     if not text:
         return ("", False)
     
@@ -300,28 +309,18 @@ def extract_skill_snippet(text, aliases, max_len=280):
 
     for unit in raw_units:
         clean_unit = clean_evidence_sentence(unit)
-        if len(clean_unit) < 12:
+        if len(clean_unit) < 8:
             continue
         unit_lower = clean_unit.lower()
         
-        is_metadata = any(term in unit_lower for term in [
-            "novitech ltd", "technopark", "pvt ltd", "1stop remote", 
-            "intern —", "intern -", "technologies ltd"
-        ])
-        if is_metadata:
-            continue
-
         has_alias = False
-        matched_alias = None
         for alias in aliases:
             pattern = r"(?<![a-zA-Z0-9])" + re.escape(alias.lower()) + r"(?![a-zA-Z0-9])"
             if re.search(pattern, unit_lower):
                 has_alias = True
-                matched_alias = alias.lower()
                 break
         
         if has_alias:
-            # Strip parenthetical tech tags to see if the skill is ALSO mentioned in the actual action sentence
             text_outside_parens = re.sub(r"\([^)]*\)", " ", unit_lower)
             mentioned_outside_parens = any(
                 re.search(r"(?<![a-zA-Z0-9])" + re.escape(a.lower()) + r"(?![a-zA-Z0-9])", text_outside_parens)
@@ -332,15 +331,12 @@ def extract_skill_snippet(text, aliases, max_len=280):
             has_action = bool(words.intersection(ACTION_VERBS))
 
             if not mentioned_outside_parens:
-                # Skill appears ONLY inside a parenthetical tech tag -> Supporting (0.70x)
                 header_tag_units.append(clean_unit)
             elif has_action:
-                # Skill is actively named in a sentence with a delivery verb -> Demonstrated (1.0x)
                 action_units.append(clean_unit)
             else:
                 descriptive_units.append(clean_unit)
 
-    # STRICT INVARIANT: Action units get Demonstrated (True). Tech-tags get Supporting (False).
     if action_units:
         chosen = action_units[0]
         is_demonstrated = True
@@ -351,7 +347,8 @@ def extract_skill_snippet(text, aliases, max_len=280):
         chosen = header_tag_units[0]
         is_demonstrated = False
     else:
-        return ("", False)
+        exact_line = extract_matching_line(text, aliases)
+        return (exact_line, False)
 
     if len(chosen) > max_len:
         cut = chosen[:max_len]
@@ -381,10 +378,12 @@ def find_contextual_skill_evidence(resume_text, skill):
             pattern = r"(?<![a-zA-Z0-9])" + re.escape(alias_norm) + r"(?![a-zA-Z0-9])"
             if re.search(pattern, normalized_section):
                 snippet, _ = extract_skill_snippet(section_text, aliases)
+                if not snippet:
+                    snippet = extract_matching_line(section_text, aliases)
                 evidence.append({
                     "section": section_name,
                     "evidence": alias,
-                    "snippet": snippet if snippet else f"Referenced {format_skill_display(alias)} in {section_name}.",
+                    "snippet": snippet,
                     "strength": SECTION_STRENGTH.get(section_name, "supporting"),
                 })
                 break
@@ -418,6 +417,9 @@ def classify_skill_evidence(resume_text, skill, is_substitute_lookup=False):
     if strong_found:
         substantive_body = "\n".join(sections[k] for k in strong_found if k in sections)
         snippet, is_demonstrated = extract_skill_snippet(substantive_body, aliases)
+        if not snippet:
+            snippet = extract_matching_line(substantive_body, aliases)
+
         if snippet and is_demonstrated:
             return {
                 "status": "demonstrated",
@@ -426,7 +428,6 @@ def classify_skill_evidence(resume_text, skill, is_substitute_lookup=False):
                 "confidence": 1.0,
             }
         elif snippet:
-            # Consistent Rule: Mentioned in project title/tech tag without active verb = Supporting (0.70x)
             return {
                 "status": "supporting",
                 "sections": strong_found,
@@ -438,28 +439,37 @@ def classify_skill_evidence(resume_text, skill, is_substitute_lookup=False):
     supporting_found = [s for s in found_sections if s in supporting_sections]
     if supporting_found:
         substantive_body = "\n".join(sections[k] for k in supporting_found if k in sections)
-        snippet, _ = extract_skill_snippet(substantive_body, aliases)
-        if not snippet:
-            lines = [l.strip() for l in substantive_body.splitlines() if l.strip()]
-            snippet = clean_evidence_sentence(lines[0]) if lines else f"Referenced in {supporting_found[0]}."
+        # ALWAYS extract the exact line containing the matched alias, NEVER lines[0]
+        exact_line = extract_matching_line(substantive_body, aliases)
+        if not exact_line:
+            exact_line, _ = extract_skill_snippet(substantive_body, aliases)
+
         return {
             "status": "supporting",
             "sections": supporting_found,
-            "snippet": snippet,
+            "snippet": exact_line,
             "confidence": 0.70,
+        }
+
+    # Check if directly in skills list BEFORE checking substitute tools
+    if "skills" in found_sections:
+        skills_line = extract_matching_line(sections.get("skills", ""), aliases)
+        return {
+            "status": "listed",
+            "sections": ["skills"],
+            "snippet": skills_line,
+            "confidence": 0.40,
         }
 
     candidate_all_skills = extract_skills(resume_text)
     
-    # 1. Substitute Tool Check with Minimum Weight Invariant (no recursive loop)
+    # Substitute Tool Check (ONLY when target skill itself is missing from resume)
     if not is_substitute_lookup:
         substitute_tool = find_equivalent_skill(skill, candidate_all_skills)
         if substitute_tool:
             sub_ev = classify_skill_evidence(resume_text, substitute_tool, is_substitute_lookup=True)
-            sub_status = sub_ev.get("status", "listed")
             sub_conf = sub_ev.get("confidence", 0.40)
             
-            # Invariant: Substitute credit cannot exceed the weight of the underlying tool
             effective_weight = min(0.75, sub_conf)
             effective_status = "substitute" if effective_weight >= 0.75 else ("supporting" if effective_weight >= 0.70 else "listed")
 
@@ -467,25 +477,17 @@ def classify_skill_evidence(resume_text, skill, is_substitute_lookup=False):
                 "status": effective_status,
                 "sections": sub_ev.get("sections", ["skills"]),
                 "substitute_tool": substitute_tool,
-                "snippet": f"Demonstrates {format_skill_display(substitute_tool)} ({sub_status.title()} evidence).",
+                "snippet": sub_ev.get("snippet", ""), # Strictly verbatim quote from underlying tool!
                 "confidence": effective_weight,
             }
 
-    # 2. Database/SQL: Only credited as Listed if MySQL or Postgres is listed on the resume
     if skill in {"sql", "database"} and ("mysql" in candidate_all_skills or "postgresql" in candidate_all_skills):
-        via_db = "MySQL" if "mysql" in candidate_all_skills else "PostgreSQL"
+        via_db = "mysql" if "mysql" in candidate_all_skills else "postgresql"
+        db_line = extract_matching_line(sections.get("skills", ""), [via_db])
         return {
             "status": "listed",
             "sections": ["skills"],
-            "snippet": f"Found in Skills inventory (via {via_db}) without active project sentence context.",
-            "confidence": 0.40,
-        }
-
-    if "skills" in found_sections:
-        return {
-            "status": "listed",
-            "sections": ["skills"],
-            "snippet": "Found in Skills inventory without active project sentence context.",
+            "snippet": db_line,
             "confidence": 0.40,
         }
 
@@ -520,7 +522,6 @@ def extract_skills(text):
         if evidence:
             detected_skills.add(skill)
 
-    # Do not auto-inject SQL or Database; preserve exact candidate inventory
     return sorted(detected_skills)
 
 def _extract_section(text, headings):
@@ -558,10 +559,6 @@ def extract_job_skills(text):
     return sorted(detected_skills)
 
 def parse_job_skill_sections(job_description, candidate_skills=None):
-    """
-    Parses required job skills and coalesces alternative Any-Of groups
-    so the candidate is evaluated fairly without multi-gap penalties.
-    """
     candidate_skills = candidate_skills or set()
     required_sections = _extract_section(job_description, ["required skills", "required skill", "requirements", "required qualifications", "key requirements", "core languages"])
     preferred_sections = _extract_section(job_description, ["preferred skills", "preferred skill", "nice to have", "preferred qualifications"])
@@ -592,21 +589,29 @@ def parse_job_skill_sections(job_description, candidate_skills=None):
         if "figma" in required_skills and "adobe xd" in required_skills:
             required_skills.remove("adobe xd")
 
-    # 3. Version Control: Git, GitHub, GitLab
+    # 3. Frontend Frameworks: React or Angular
+    if any(p in lower_jd for p in ["react or angular", "angular or react", "react/angular", "angular/react"]):
+        if "react" in required_skills and "angular" in required_skills:
+            if "react" in candidate_skills:
+                required_skills.remove("angular")
+            elif "angular" in candidate_skills:
+                required_skills.remove("react")
+            else:
+                required_skills.remove("angular")
+
+    # 4. Version Control: Git, GitHub, GitLab
     if "git" in required_skills:
         if "github" in required_skills:
             required_skills.remove("github")
         if "gitlab" in required_skills:
             required_skills.remove("gitlab")
 
-    # 4. API Protocol: RESTful or GraphQL
+    # 5. API Protocol: RESTful or GraphQL
     if any(p in lower_jd for p in ["restful or graphql", "rest or graphql", "rest/graphql", "restful/graphql"]):
         if "rest api" in required_skills and "graphql" in required_skills:
-            # If candidate matches REST API, keep REST API
             required_skills.remove("graphql")
 
-    # 5. Database Alternatives: PostgreSQL, MySQL, MongoDB, Database
-    # If the JD lists them as alternatives (e.g. "PostgreSQL, MySQL, or MongoDB"):
+    # 6. Database Alternatives
     db_group = {"mysql", "postgresql", "mongodb", "database"}.intersection(set(required_skills))
     if len(db_group) > 1 and any(p in lower_jd for p in ["or mongodb", "or mysql", "or postgresql", "mysql/postgresql", "postgresql/mysql", "relational or nosql"]):
         matched_db = db_group.intersection(candidate_skills)
@@ -616,12 +621,11 @@ def parse_job_skill_sections(job_description, candidate_skills=None):
                 if other != chosen and other in required_skills:
                     required_skills.remove(other)
         else:
-            # Candidate has none: keep the single most common primary DB requirement
             for other in list(db_group)[1:]:
                 if other in required_skills:
                     required_skills.remove(other)
 
-    # 6. Backend Framework Alternatives: Django, FastAPI, Node.js, Spring Boot
+    # 7. Backend Framework Alternatives
     fw_group = {"django", "fastapi", "node.js", "spring boot"}.intersection(set(required_skills))
     if len(fw_group) > 1 and any(p in lower_jd for p in ["e.g., node.js", "node.js, python, java", "django, fastapi, or", "fastapi or django", "or node.js"]):
         matched_fw = fw_group.intersection(candidate_skills)

@@ -156,56 +156,45 @@ def analyze_job_relevant_capabilities(resume_skills, job_skills, skill_evidence_
                 earned_weight += 0.40
 
         missing = sorted(list(set(relevant_job_skills) - set(s.split(" (")[0] for s in matched)))
-
-        # In src/capability_engine.py -> inside analyze_job_relevant_capabilities():
-# Replace the capability evaluation block (around line 125-180) with this:
-
         coverage = (earned_weight / len(relevant_job_skills) * 100) if relevant_job_skills else 0.0
 
-        # 1. DOMAIN-SPECIFIC GATES FIRST (Before general 2-skill check)
+        # UNIFIED THRESHOLD RULE EVERYWHERE:
+        # 1. Domain gates first
         if capability_name == "full stack development":
             has_fe = bool(resume_skills.intersection(core_frontend))
             has_be = bool(resume_skills.intersection(core_backend))
             if not (has_fe and has_be):
                 coverage = min(coverage, 35.0)
                 alignment = "Low Alignment"
-            elif len(matched) < 2:
+            elif len(matched) < 2 or coverage <= 40.0:
                 coverage = min(coverage, 40.0)
-                alignment = "Partial Alignment"
+                alignment = "Low Alignment"
             else:
-                alignment = "Strong Alignment" if coverage >= 80.0 else ("Partial Alignment" if coverage >= 45.0 else "Low Alignment")
+                alignment = "Strong Alignment" if coverage >= 80.0 else "Partial Alignment"
 
         elif capability_name == "ui ux development":
             has_design_core = bool(resume_skills.intersection({"figma", "ui/ux", "adobe xd"}))
-            if not has_design_core:
+            if not has_design_core or len(matched) < 2 or coverage <= 40.0:
                 coverage = min(coverage, 35.0)
                 alignment = "Low Alignment"
-            elif len(matched) < 2:
-                coverage = min(coverage, 40.0)
-                alignment = "Partial Alignment"
             else:
-                alignment = "Strong Alignment" if coverage >= 80.0 else ("Partial Alignment" if coverage >= 45.0 else "Low Alignment")
+                alignment = "Strong Alignment" if coverage >= 80.0 else "Partial Alignment"
 
         elif capability_name == "data science":
             has_ds_anchor = bool(resume_skills.intersection({"machine learning", "statistical analysis", "pandas", "numpy"}))
-            if not has_ds_anchor or len(matched) < 2:
+            if not has_ds_anchor or len(matched) < 2 or coverage <= 40.0:
                 coverage = min(coverage, 40.0)
-                alignment = "Partial Alignment" if coverage >= 30.0 else "Low Alignment"
+                alignment = "Low Alignment"
             else:
-                alignment = "Strong Alignment" if coverage >= 80.0 else ("Partial Alignment" if coverage >= 45.0 else "Low Alignment")
+                alignment = "Strong Alignment" if coverage >= 80.0 else "Partial Alignment"
 
-        # 2. GENERAL 2-SKILL FLOOR FOR ALL OTHER CAPABILITIES
-        elif len(matched) < 2:
+        # 2. Single-skill / Low-coverage floor: <= 40.0% is ALWAYS Low Alignment
+        elif len(matched) < 2 or coverage <= 40.0:
             coverage = min(coverage, 40.0)
-            alignment = "Partial Alignment" if coverage >= 30.0 else "Low Alignment"
+            alignment = "Low Alignment"
 
         else:
-            if coverage >= 80.0:
-                alignment = "Strong Alignment"
-            elif coverage >= 45.0:
-                alignment = "Partial Alignment"
-            else:
-                alignment = "Low Alignment"
+            alignment = "Strong Alignment" if coverage >= 80.0 else "Partial Alignment"
 
         requirement_type = (
             "Required"

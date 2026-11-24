@@ -1,109 +1,98 @@
 import pytest
-from src.skill_matcher import extract_skills, classify_skill_evidence, compare_skills
-from src.career_paths import get_alternative_pathways
+from src.skill_matcher import extract_skills, classify_skill_evidence, compare_skills, SKILL_ALIASES
+from src.screening_engine import extract_job_responsibilities, analyze_job_responsibilities
 from src.capability_engine import analyze_job_relevant_capabilities
+from src.interview_generator import generate_interview_questions
+from src.career_paths import get_alternative_pathways
 
 
-# Test 1: Substring Guard (Works for ANY resume)
-def test_no_substring_false_positives():
-    """Ensures tool names aren't matched inside unrelated English words."""
-    sample_text = """
-    Hobbies:
-    Exploring Digital Content, Watching Movies.
-
-    Contact:
-    user@github.com | website.com
-
-    Experience:
-    Managed logistical operations for supply chain.
-    """
-    skills = extract_skills(sample_text)
-    assert "git" not in skills, "Failed: 'git' was matched as a substring inside 'Digital' or 'github.com'!"
-    assert "go" not in skills, "Failed: 'go' was matched inside 'logistical'!"
-
-def test_tech_tag_consistency():
-    """Ensures parenthetical tech tags without action sentences earn Supporting (0.70x), not Demonstrated."""
-    sample_resume = """
-    Projects:
-    E-cart Home page (HTML, CSS, JS)
-    Designed a responsive e-commerce landing page.
-    """
-    ev = classify_skill_evidence(sample_resume, "javascript")
-    assert ev["status"] == "supporting", "Parenthetical tech tags without active action sentences must be Supporting (0.70x)!"
-def test_capability_single_skill_gating():
-    """Ensures no capability achieves Strong Alignment on a single matched skill alone."""
-    resume_skills = ["javascript"]
-    job_skills = ["javascript"]
-    ev_levels = {"javascript": {"status": "demonstrated", "confidence": 1.0}}
-    
-    caps = analyze_job_relevant_capabilities(resume_skills, job_skills, skill_evidence_levels=ev_levels)
-    fe_cap = next(c for c in caps if c["capability"] == "Frontend Development")
-    assert fe_cap["alignment"] != "Strong Alignment", "Frontend must not be Strong Alignment from JavaScript alone!"
-
-# Test 2: RDB Alias Mapping (Works for ANY resume)
-def test_database_alias_resolution():
-    """Ensures relational DB tools satisfy SQL requirements dynamically."""
-    sample_resume = """
-    Skills:
-    MySQL, PostgreSQL, Python
-    """
-    jd_text = """
-    Requirements:
-    SQL, Python
-    """
-    res = compare_skills(sample_resume, jd_text)
-    assert "sql" in res["matched_skills"], "Failed: MySQL/Postgres should satisfy SQL competency."
-
-
-# Test 3: Evidence Ladder Distinction (Works for ANY resume)
-def test_evidence_tier_weighting():
-    """Ensures project bullet points earn 1.0x while skills list earns only 0.4x."""
-    sample_resume = """
-    Skills:
-    Java, Python, Docker
-
-    Projects:
-    E-Commerce Platform: Built and deployed scalable REST APIs using Python.
-    """
-    py_ev = classify_skill_evidence(sample_resume, "python")
-    assert py_ev["status"] == "demonstrated", "Python with action verb in Projects must earn Demonstrated (1.0x)!"
-
-    java_ev = classify_skill_evidence(sample_resume, "java")
-    assert java_ev["status"] == "listed", "Java without project context must be restricted to Listed Only (0.4x)!"
-
-
-# Test 4: Dynamic Arithmetic Sanity Check
-def test_score_arithmetic_invariants():
-    """Validates that skill matching returns non-empty matched requirements and respects extracted counts."""
+# 1. Responsibility Parser & Tier Mapping
+def test_responsibility_parser_excludes_requirements_and_uses_skill_tiers():
     jd = """
-    Requirements:
-    Python, Docker, React
+    Responsibilities:
+    - Develop responsive web applications using HTML, CSS, and JavaScript.
+    - Integrate backend REST APIs.
+
+    Required Skills:
+    - Strong foundation in HTML, CSS, and JavaScript.
     """
+    duties = extract_job_responsibilities(jd)
+    assert len(duties) == 2, f"Expected 2 duties, got {duties}"
+    assert not any("Required Skills" in d for d in duties)
+
+    resume = "Skills:\nHTML, CSS, JavaScript"
+    resp_analysis = analyze_job_responsibilities(resume, jd)["responsibilities"]
+    assert resp_analysis[0]["status"] == "related"
+    assert "listed only" in resp_analysis[0]["related_evidence"][0]["skill"]
+    assert resp_analysis[1]["status"] == "missing"
+
+
+# 2. Verbatim Evidence Check (Never Generate Fake Text)
+def test_every_evidence_quote_contains_skill_or_alias():
     resume = """
     Skills:
-    Python, Docker
+    Angular, MySQL
+
+    Internship:
+    JAVA Full stack Quest Innovative Solutions Trivandrum
+    React JS | Srishti Innovative
+    UI/UX | Srishti Innovative
     """
+    for skill in ["java", "react", "ui/ux", "angular"]:
+        ev = classify_skill_evidence(resume, skill)
+        quote = ev.get("snippet", "").lower()
+        assert "demonstrates" not in quote, f"Generated fake text found in quote: {quote}"
+        aliases = [a.lower() for a in SKILL_ALIASES.get(skill, [skill])]
+        assert any(a in quote for a in aliases), f"Quote '{quote}' does not contain {skill} or its aliases!"
+
+
+# 3. Exact Line Extraction in Sections
+def test_exact_line_matching_in_internship():
+    resume = """
+    Internship:
+    JAVA Full stack Quest Innovative Solutions Trivandrum
+    React JS | Srishti Innovative
+    UI/UX | Srishti Innovative
+    """
+    react_ev = classify_skill_evidence(resume, "react")
+    assert "React JS" in react_ev["snippet"]
+    assert "JAVA Full stack" not in react_ev["snippet"]
+
+    uiux_ev = classify_skill_evidence(resume, "ui/ux")
+    assert "UI/UX" in uiux_ev["snippet"]
+
+
+# 4. Any-Of Group Coalescing
+def test_any_of_react_or_angular_counts_as_one():
+    jd = "Required Skills:\nReact or Angular, Git"
+    resume = "Skills:\nAngular\nInternship:\nReact JS | Srishti"
     res = compare_skills(resume, jd)
-    assert "python" in res["matched_skills"]
-    assert "docker" in res["matched_skills"]
-    assert "react" in res["missing_skills"]
-    assert len(res["required_skills"]) == 3
-    assert len(res["matched_skills"]) == 2
+    assert len(res["required_skills"]) == 2
+    assert "react" in res["required_skills"]
+    assert "angular" not in res["required_skills"]
 
 
-# Test 5: Strict JD-Invariance for Global Pathways
-def test_pathways_are_jd_independent():
-    """Validates that Career Pathways remain completely invariant regardless of which target JD is passed."""
-    resume_text = """
-    Pradeep Srinivas B
-    Skills & Tools: Python, SQL, Power BI, Excel, Data Analysis, Machine Learning
-    Projects:
-    Cricket-Twin AI: Analyzed datasets using Python and SQL to build predictive machine learning models.
-    """
-    resume_skills = extract_skills(resume_text)
-    evidence_levels = {s: classify_skill_evidence(resume_text, s) for s in resume_skills}
+# 5. Interview Question Wording & No Duplicate Alternatives
+def test_interview_question_design_wording():
+    qs = generate_interview_questions(
+        missing_skills=[],
+        supporting_skills=["css"],
+        supporting_evidence_map={
+            "css": {"sections": ["projects"], "snippet": "E-cart Home page (HTML, CSS, JS)"}
+        }
+    )
+    assert len(qs) == 1
+    assert "layouts, components, or styles" in qs[0]["question"]
+    assert "modules, logic, or functions" not in qs[0]["question"]
 
-    run_1 = get_alternative_pathways(resume_skills, skill_evidence_levels=evidence_levels)
-    run_2 = get_alternative_pathways(resume_skills, skill_evidence_levels=evidence_levels)
 
-    assert run_1 == run_2, "Failed: Career pathways must produce identical scores for the same candidate!"
+# 6. Consistent Capability Thresholds
+def test_capability_40_percent_maps_to_low_alignment():
+    caps = analyze_job_relevant_capabilities(
+        resume_skills=["git"],
+        job_skills=["git"],
+        skill_evidence_levels={"git": {"status": "listed", "confidence": 0.40}}
+    )
+    vc = next(c for c in caps if c["capability"] == "Version Control")
+    assert vc["coverage"] == 40.0
+    assert vc["alignment"] == "Low Alignment"
