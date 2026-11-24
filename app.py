@@ -936,7 +936,7 @@ if "result" in st.session_state:
         st.caption("Evidence-weighted candidate fit evaluated against standardized global role benchmark profiles (independent of target JD).")
         role_recommendations = recommend_roles(
             result.get("resume_skills", []),
-            skill_evidence_levels=skill_evidence_levels,
+            skill_evidence_levels=None,
             resume_text=result.get("raw_resume_text")
         )
 

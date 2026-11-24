@@ -479,6 +479,9 @@ def classify_skill_evidence(resume_text, skill, is_substitute_lookup=False):
     # Check if directly in skills list BEFORE checking substitute tools
     if "skills" in found_sections:
         skills_line = extract_matching_line(sections.get("skills", ""), aliases)
+        if skill in {"mysql", "postgresql", "mongodb"}:
+            via_disp = format_skill_display(skill)
+            skills_line = f"{skills_line} (via {via_disp})"
         return {
             "status": "listed",
             "sections": ["skills"],

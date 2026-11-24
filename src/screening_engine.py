@@ -331,6 +331,8 @@ def analyze_job_responsibilities(resume_text, job_description, skill_evidence_le
                 list_items = [t for t in list_items if t[0] == "mysql"]
             elif "postgresql" in raw_names:
                 list_items = [t for t in list_items if t[0] == "postgresql"]
+            elif "git" in raw_names:
+                list_items = [t for t in list_items if t[0] == "git"]
 
             results.append({
                 "responsibility": responsibility,

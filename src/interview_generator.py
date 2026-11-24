@@ -8,6 +8,7 @@ from src.skill_matcher import format_skill_display
 BASIC_MISSING_QUESTIONS = {
     "git": "What branching strategies (e.g., GitFlow, feature branches) and commands do you use for collaborative source control?",
     "ci/cd": "Have you worked with any automated build or CI/CD pipelines (e.g., GitHub Actions, Jenkins) to test and deploy applications?",
+    "spring boot": "How does Spring Boot handle dependency injection, REST controller routing, and database integration with JPA/Hibernate?",
     "node.js": "How does the Node.js event-driven, non-blocking I/O model work, and when would you choose it over multi-threaded architectures?",
     "django": "Can you explain how the Django ORM handles migrations and database relationships?",
     "fastapi": "How does FastAPI handle dependency injection and automatic OpenAPI documentation generation?",
@@ -28,7 +29,7 @@ BASIC_MISSING_QUESTIONS = {
 }
 
 JD_CENTRALITY = [
-    "rest api", "git", "ci/cd", "node.js", "django", "fastapi", "react", "sql", "power bi",
+    "rest api", "git", "ci/cd", "spring boot", "node.js", "django", "fastapi", "react", "sql", "power bi",
     "javascript", "html", "css", "dashboard", "data analysis", "python", "excel",
     "responsive web design", "ui/ux", "figma", "adobe xd", "database", "exploratory data analysis",
     "pandas", "numpy", "kpi", "statistical analysis"
@@ -53,9 +54,9 @@ def generate_interview_questions(
 
     filtered_missing = [s for s in missing_skills if s not in {"database", "sql"}]
     
-    # 1. Missing requirements prioritized by JD centrality
+    # 1. Missing requirements prioritized by JD centrality (up to 3 gaps)
     sorted_missing = sorted(filtered_missing, key=lambda s: JD_CENTRALITY.index(s) if s in JD_CENTRALITY else 99)
-    for skill in sorted_missing[:2]:
+    for skill in sorted_missing[:3]:
         q_text = BASIC_MISSING_QUESTIONS.get(
             skill,
             f"The job specifies {format_skill_display(skill)}, which was not verified on your resume. Could you describe any academic projects, labs, or coursework where you used this technology?"
@@ -107,6 +108,8 @@ def generate_interview_questions(
             if not proj_title or len(proj_title) > 60:
                 proj_title = "your project"
             project_tech_groups.setdefault(proj_title, []).append(skill)
+        else:
+            internship_supp.append(skill)
 
     # 3a. Ask internship/experience framework verification questions first (e.g., React, Java)
     for skill in internship_supp:
@@ -139,25 +142,35 @@ def generate_interview_questions(
             "question": f"{joined_skills} {verb} in {proj_title}'s tech list. What specific {deliverable_phrase} did you implement using {pronoun} there?"
         })
 
-    # 4. Listed skills probe
+    # 4. Listed skills probe (custom probe for Excel; group generic listed-only skills into 1 question)
     SPECIFIC_LISTED_PROMPTS = {
         "excel": "Your skills list mentions Excel (including Pivot Tables and VLOOKUP). Can you walk through a dataset where you used Pivot Tables versus VLOOKUP to reconcile or summarize data?"
     }
+    generic_listed = []
     for skill in listed_skills:
-        if len(questions) >= 5:
-            break
         if skill in {"database", "sql"}:
             continue
-        disp = format_skill_display(skill)
-        q_text = SPECIFIC_LISTED_PROMPTS.get(
-            skill,
-            f"You have {disp} listed in your technical competencies without an explicit project bullet point. Can you describe an academic project or task where you applied {disp}?"
-        )
+        if skill in SPECIFIC_LISTED_PROMPTS:
+            if len(questions) < 5:
+                disp = format_skill_display(skill)
+                questions.append({
+                    "category": f"Depth Verification ({disp})",
+                    "type": "Listed-Only Skill",
+                    "question": SPECIFIC_LISTED_PROMPTS[skill]
+                })
+        else:
+            generic_listed.append(skill)
+
+    if generic_listed and len(questions) < 5:
+        disp_listed = [format_skill_display(s) for s in generic_listed]
+        joined_listed = ", ".join(disp_listed)
+        verb = "is" if len(disp_listed) == 1 else "are"
         questions.append({
-            "category": f"Depth Verification ({disp})",
+            "category": f"Depth Verification ({joined_listed})",
             "type": "Listed-Only Skill",
-            "question": q_text
+            "question": f"{joined_listed} {verb} listed in your technical competencies without an explicit project bullet point. Which of these have you applied hands-on in coursework or labs, and what did you build?"
         })
+
     # 5. Project deep-dive fallback when candidate has strong alignment and slots remain
     if len(questions) < 5 and demonstrated_skills:
         top_dem = format_skill_display(demonstrated_skills[0])
