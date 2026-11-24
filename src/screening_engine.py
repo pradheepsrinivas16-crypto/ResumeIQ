@@ -88,7 +88,7 @@ RESPONSIBILITY_PATTERNS = [
             "react or angular",
             "interactive frontend applications"
         ],
-        "related_skills": ["react", "angular", "javascript"]
+        "related_skills": ["react", "angular"]
     },
     {
         "name": "ui ux design collaboration",

@@ -89,32 +89,47 @@ def generate_interview_questions(
             "question": f"You've used {sub_disp} in projects, while our role specifies {target_disp}. How comfortable are you translating your {asset_phrase} into {target_disp}?"
         })
 
-    # 3. Section-aware Supporting skills probe
+    # 3. Supporting skills probe (Prioritize Internship/Work frameworks first; group project tech-tags)
+    internship_supp = []
+    project_tech_groups = {}
+
     for skill in supporting_skills:
-        if len(questions) >= 5:
-            break
-        disp = format_skill_display(skill)
         ev_info = supp_ev_map.get(skill, {})
         sections = [str(sec).lower() for sec in ev_info.get("sections", [])]
         snippet = str(ev_info.get("snippet", "")).strip()
 
         if "projects" in sections:
             proj_title = snippet.split("(")[0].strip() if "(" in snippet else "your project"
-            if skill in {"css", "html", "figma", "adobe xd", "ui/ux", "responsive web design"}:
-                deliverable_phrase = "layouts, components, or styles"
-            else:
-                deliverable_phrase = "modules, logic, or functions"
-
-            q_text = f"{disp} appears in {proj_title}'s tech list. What specific {deliverable_phrase} did you implement in {disp} there?"
-            q_type = "Project Tech-List Verification"
+            project_tech_groups.setdefault(proj_title, []).append(skill)
         else:
-            q_text = f"You have {disp} listed under your internship or educational experience. What specific features, interfaces, or deliverables did you build with {disp} during that period?"
-            q_type = "Supporting Skill Verification"
+            internship_supp.append(skill)
 
+    # 3a. Ask internship/experience framework verification questions first (e.g., React, Java)
+    for skill in internship_supp:
+        if len(questions) >= 5:
+            break
+        disp = format_skill_display(skill)
         questions.append({
             "category": f"Experience Verification ({disp})",
-            "type": q_type,
-            "question": q_text
+            "type": "Supporting Skill Verification",
+            "question": f"You have {disp} listed under your internship or educational experience. What specific features, interfaces, or deliverables did you build with {disp} during that period?"
+        })
+
+    # 3b. Group project tech-list items by project so we don't repeat near-identical questions
+    for proj_title, skills_in_proj in project_tech_groups.items():
+        if len(questions) >= 5:
+            break
+        disp_list = [format_skill_display(s) for s in skills_in_proj]
+        joined_skills = ", ".join(disp_list)
+        if all(s in {"css", "html", "figma", "adobe xd", "ui/ux", "responsive web design", "javascript"} for s in skills_in_proj):
+            deliverable_phrase = "layouts, components, or styles"
+        else:
+            deliverable_phrase = "modules, logic, or functions"
+
+        questions.append({
+            "category": f"Project Tech-List Verification ({joined_skills})",
+            "type": "Project Tech-List Verification",
+            "question": f"{joined_skills} appear in {proj_title}'s tech list. What specific {deliverable_phrase} did you implement using them there?"
         })
 
     # 4. Listed skills probe

@@ -222,7 +222,28 @@ ResumeIQ/
     ├── skill_matcher.py           # Taxonomy, evidence classifier & canonical mapping
     └── styles.py                  # Custom Streamlit UI CSS injection
 ```
+## Scoring Methodology & Architectural Guardrails
 
+### 1. Dual-Engine Compatibility Formula
+Final compatibility scores are computed deterministically:
+$$\text{Final Compatibility} = (\text{Calibrated MiniLM Semantic Similarity} \times 0.60) + (\text{Evidence-Weighted Skill Coverage} \times 0.40)$$
+
+### 2. Evidence Verification Ladder
+Skills are never credited equally via simple keyword counting. Every matched competency is verified against structured resume sections:
+- **Demonstrated ($1.00\times$)**: Verified in active `Projects` or `Work Experience` sentences containing action verbs describing the duty or deliverable.
+- **Industry Substitute ($0.75\times$)**: Equivalent enterprise tool (e.g., Power BI $\leftrightarrow$ Tableau), strictly capped by $\min(0.75, \text{Weight}(\text{Anchor Tool}))$ so a substitute never exceeds its underlying evidence.
+- **Supporting ($0.70\times$)**: Verified in `Internship`, `Certifications`, `Education`, or parenthetical project tech tags (e.g., `(HTML, CSS, JS)`) without an explicit action sentence.
+- **Listed Only ($0.40\times$)**: Present solely in a `Technical Skills` inventory without contextual project delivery.
+- **Missing ($0.00\times$)**: No verbatim or alias match found.
+
+### 3. Capability Gating & Any-Of Coalescing
+- **Minimum-Evidence Capability Floor**: No high-level capability can achieve **Strong Alignment** on a single matched skill alone; at least two distinct matched skills (and domain core requirements such as both frontend and backend skills for Full Stack) are required.
+- **Any-Of Requirement Coalescing**: Job descriptions specifying alternatives (e.g., *"React or Angular"*, *"Git, GitHub, or GitLab"*, *"Tableau or Power BI"*) are coalesced into a single canonical requirement satisfied by the candidate's highest-evidence match.
+- **JD-Invariant Career Pathways**: Cross-functional career pathways and recommended role benchmarks are evaluated strictly against the candidate's verified evidence profile, remaining invariant regardless of the target job description.
+
+### 4. Known Limitations & Evaluation Guidelines
+- **Semantic Sensitivity to JD Phrasing**: Dense transformer embeddings (MiniLM) respond to structural headers and phrasing variations (shifting raw semantic similarity by $\pm 1\text{–}9\%$ depending on JD length and formatting). Comparative candidate evaluations and leaderboard rankings should always be executed against identical job description text.
+- **Heuristic Decision Support**: All scores, capability ratings, and auxiliary BERT domain votes are decision-support indicators intended for human-in-the-loop review, never automated hiring decisions.
 ---
 
 ## Getting Started
