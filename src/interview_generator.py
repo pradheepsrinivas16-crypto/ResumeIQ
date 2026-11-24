@@ -121,6 +121,9 @@ def generate_interview_questions(
             break
         disp_list = [format_skill_display(s) for s in skills_in_proj]
         joined_skills = ", ".join(disp_list)
+        verb = "appears" if len(disp_list) == 1 else "appear"
+        pronoun = "it" if len(disp_list) == 1 else "them"
+
         if all(s in {"css", "html", "figma", "adobe xd", "ui/ux", "responsive web design", "javascript"} for s in skills_in_proj):
             deliverable_phrase = "layouts, components, or styles"
         else:
@@ -129,20 +132,35 @@ def generate_interview_questions(
         questions.append({
             "category": f"Project Tech-List Verification ({joined_skills})",
             "type": "Project Tech-List Verification",
-            "question": f"{joined_skills} appear in {proj_title}'s tech list. What specific {deliverable_phrase} did you implement using them there?"
+            "question": f"{joined_skills} {verb} in {proj_title}'s tech list. What specific {deliverable_phrase} did you implement using {pronoun} there?"
         })
 
     # 4. Listed skills probe
+    SPECIFIC_LISTED_PROMPTS = {
+        "excel": "Your skills list mentions Excel (including Pivot Tables and VLOOKUP). Can you walk through a dataset where you used Pivot Tables versus VLOOKUP to reconcile or summarize data?"
+    }
     for skill in listed_skills:
         if len(questions) >= 5:
             break
         if skill in {"database", "sql"}:
             continue
         disp = format_skill_display(skill)
+        q_text = SPECIFIC_LISTED_PROMPTS.get(
+            skill,
+            f"You have {disp} listed in your technical competencies without an explicit project bullet point. Can you describe an academic project or task where you applied {disp}?"
+        )
         questions.append({
             "category": f"Depth Verification ({disp})",
             "type": "Listed-Only Skill",
-            "question": f"You have {disp} listed in your technical competencies without an explicit project bullet point. Can you describe an academic project or task where you applied {disp}?"
+            "question": q_text
         })
+    # 5. Project deep-dive fallback when candidate has strong alignment and slots remain
+    if len(questions) < 5 and demonstrated_skills:
+        top_dem = format_skill_display(demonstrated_skills[0])
+        questions.append({
+            "category": f"Project Architecture Deep-Dive ({top_dem})",
+            "type": "Demonstrated Competency Validation",
+            "question": f"You demonstrated {top_dem} in your work/project history. What was the hardest data quality or performance bottleneck you solved while implementing it?"
+        })    
 
     return questions[:5]

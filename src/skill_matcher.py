@@ -340,16 +340,12 @@ def extract_skill_snippet(text, aliases, max_len=280):
     if action_units:
         chosen = action_units[0]
         is_demonstrated = True
-    elif descriptive_units:
-        chosen = descriptive_units[0]
-        is_demonstrated = True
-    elif header_tag_units:
-        chosen = header_tag_units[0]
+    elif header_tag_units or descriptive_units:
+        chosen = (header_tag_units or descriptive_units)[0]
         is_demonstrated = False
     else:
         exact_line = extract_matching_line(text, aliases)
         return (exact_line, False)
-
     if len(chosen) > max_len:
         cut = chosen[:max_len]
         punct_pos = max(cut.rfind("."), cut.rfind(";"), cut.rfind(","))
@@ -483,14 +479,14 @@ def classify_skill_evidence(resume_text, skill, is_substitute_lookup=False):
 
     if skill in {"sql", "database"} and ("mysql" in candidate_all_skills or "postgresql" in candidate_all_skills):
         via_db = "mysql" if "mysql" in candidate_all_skills else "postgresql"
+        via_disp = format_skill_display(via_db)
         db_line = extract_matching_line(sections.get("skills", ""), [via_db])
         return {
             "status": "listed",
             "sections": ["skills"],
-            "snippet": db_line,
+            "snippet": f"{db_line} (via {via_disp})" if db_line else f"Found in Skills inventory (via {via_disp}).",
             "confidence": 0.40,
         }
-
     return {
         "status": "missing",
         "sections": [],

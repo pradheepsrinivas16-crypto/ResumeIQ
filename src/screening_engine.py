@@ -318,8 +318,14 @@ def analyze_job_responsibilities(resume_text, job_description, skill_evidence_le
                 "reason": f"Supporting context detected ({', '.join(format_skill_display(t[0]) for t in supp_items)})."
             })
         else:
-            # Listed Only (0.40x) -> △ labeled 'listed only'
             list_items = [t for t in matched_tiers if t[1] == "listed"]
+            # Deduplicate redundant database/sql aliases if derived from mysql/postgresql
+            raw_names = [t[0] for t in list_items]
+            if "mysql" in raw_names:
+                list_items = [t for t in list_items if t[0] == "mysql"]
+            elif "postgresql" in raw_names:
+                list_items = [t for t in list_items if t[0] == "postgresql"]
+
             results.append({
                 "responsibility": responsibility,
                 "status": "related",

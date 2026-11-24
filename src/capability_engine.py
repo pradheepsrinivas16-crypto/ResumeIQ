@@ -161,9 +161,9 @@ def analyze_job_relevant_capabilities(resume_skills, job_skills, skill_evidence_
         # UNIFIED THRESHOLD RULE EVERYWHERE:
         # 1. Domain gates first
         if capability_name == "full stack development":
-            has_fe = bool(resume_skills.intersection(core_frontend))
-            has_be = bool(resume_skills.intersection(core_backend))
-            if not (has_fe and has_be):
+            has_jd_fe = bool(set(relevant_job_skills).intersection(core_frontend))
+            has_jd_be = bool(set(relevant_job_skills).intersection(core_backend))
+            if not (has_jd_fe and has_jd_be):
                 coverage = min(coverage, 35.0)
                 alignment = "Low Alignment"
             elif len(matched) < 2 or coverage <= 40.0:
