@@ -440,7 +440,11 @@ def analyze_job_responsibilities(resume_text, job_description, skill_evidence_le
         if rule["name"] == "api development":
             direct_patterns = ["rest api", "restful api", "rest apis", "restful apis", "api endpoints"]
         elif rule["name"] == "system architecture and db schemas":
-            direct_patterns = ["server-side", "database schemas", "architect", "database management", "relational database"]
+            # Exclude loose 'architect' keyword to avoid false-matching AWS Cloud Architecting certifications
+            direct_patterns = [
+                "server-side code", "database schemas", "system architecture", 
+                "architected server", "database design and architecture"
+            ]
         elif rule["name"] == "predictive modeling and ml":
             direct_patterns = ["machine learning-based", "machine learning", "prediction and academic", "predictive modeling", "random forest"]
         elif rule["name"] == "data cleaning and aggregation":
@@ -497,7 +501,7 @@ def analyze_job_responsibilities(resume_text, job_description, skill_evidence_le
         elif related_evidence:
             matched_names = ", ".join(format_skill_display(e["skill"]) for e in related_evidence)
             status = "related"
-            reason = f"Supporting skills detected ({matched_names}), but lack dedicated project delivery context."
+            reason = f"Inferred from related technical competency ({matched_names}), without direct project delivery context."
         else:
             status = "missing"
             reason = "No direct or meaningful related evidence was detected in the resume."

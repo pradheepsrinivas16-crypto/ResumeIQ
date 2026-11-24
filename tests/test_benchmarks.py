@@ -1,6 +1,8 @@
 import pytest
 from src.skill_matcher import extract_skills, classify_skill_evidence, compare_skills
 from src.career_paths import get_alternative_pathways
+from src.capability_engine import analyze_job_relevant_capabilities
+
 
 # Test 1: Substring Guard (Works for ANY resume)
 def test_no_substring_false_positives():
@@ -19,6 +21,24 @@ def test_no_substring_false_positives():
     assert "git" not in skills, "Failed: 'git' was matched as a substring inside 'Digital' or 'github.com'!"
     assert "go" not in skills, "Failed: 'go' was matched inside 'logistical'!"
 
+def test_tech_tag_consistency():
+    """Ensures parenthetical tech tags without action sentences earn Supporting (0.70x), not Demonstrated."""
+    sample_resume = """
+    Projects:
+    E-cart Home page (HTML, CSS, JS)
+    Designed a responsive e-commerce landing page.
+    """
+    ev = classify_skill_evidence(sample_resume, "javascript")
+    assert ev["status"] == "supporting", "Parenthetical tech tags without active action sentences must be Supporting (0.70x)!"
+def test_capability_single_skill_gating():
+    """Ensures no capability achieves Strong Alignment on a single matched skill alone."""
+    resume_skills = ["javascript"]
+    job_skills = ["javascript"]
+    ev_levels = {"javascript": {"status": "demonstrated", "confidence": 1.0}}
+    
+    caps = analyze_job_relevant_capabilities(resume_skills, job_skills, skill_evidence_levels=ev_levels)
+    fe_cap = next(c for c in caps if c["capability"] == "Frontend Development")
+    assert fe_cap["alignment"] != "Strong Alignment", "Frontend must not be Strong Alignment from JavaScript alone!"
 
 # Test 2: RDB Alias Mapping (Works for ANY resume)
 def test_database_alias_resolution():

@@ -157,11 +157,19 @@ def analyze_job_relevant_capabilities(resume_skills, job_skills, skill_evidence_
 
         missing = sorted(list(set(relevant_job_skills) - set(s.split(" (")[0] for s in matched)))
 
+        # In src/capability_engine.py -> inside analyze_job_relevant_capabilities():
+# Replace the capability evaluation block (around line 125-180) with this:
+
         coverage = (earned_weight / len(relevant_job_skills) * 100) if relevant_job_skills else 0.0
 
-        # UNIVERSAL MINIMUM EVIDENCE INVARIANT
-        # 1. Full Stack requires at least one frontend AND backend skill
-        if capability_name == "full stack development":
+        # UNCONDITIONAL GATING RULES:
+        # Rule 1: A capability CANNOT achieve Strong Alignment with only 1 matched skill
+        if len(matched) < 2:
+            coverage = min(coverage, 40.0)
+            alignment = "Partial Alignment" if coverage >= 30.0 else "Low Alignment"
+
+        # Rule 2: Full Stack requires at least one frontend AND backend skill
+        elif capability_name == "full stack development":
             has_fe = bool(resume_skills.intersection(core_frontend))
             has_be = bool(resume_skills.intersection(core_backend))
             if not (has_fe and has_be):
@@ -170,7 +178,7 @@ def analyze_job_relevant_capabilities(resume_skills, job_skills, skill_evidence_
             else:
                 alignment = "Strong Alignment" if coverage >= 80.0 else ("Partial Alignment" if coverage >= 45.0 else "Low Alignment")
 
-        # 2. UI/UX requires Figma, UI/UX, or Adobe XD (JavaScript alone cannot satisfy UI/UX)
+        # Rule 3: UI/UX requires Figma, UI/UX, or Adobe XD
         elif capability_name == "ui ux development":
             has_design_core = bool(resume_skills.intersection({"figma", "ui/ux", "adobe xd"}))
             if not has_design_core:
@@ -179,36 +187,16 @@ def analyze_job_relevant_capabilities(resume_skills, job_skills, skill_evidence_
             else:
                 alignment = "Strong Alignment" if coverage >= 80.0 else ("Partial Alignment" if coverage >= 45.0 else "Low Alignment")
 
-        # 3. Frontend requires at least HTML or a framework alongside JS
-        elif capability_name == "frontend development":
-            has_fe_core = bool(resume_skills.intersection({"html", "react", "angular", "vue"}))
-            if len(matched) == 1 and not has_fe_core:
-                coverage = min(coverage, 40.0)
-                alignment = "Partial Alignment"
-            else:
-                alignment = "Strong Alignment" if coverage >= 80.0 else ("Partial Alignment" if coverage >= 45.0 else "Low Alignment")
-
-        # 4. Data Science requires math/ML/stats anchor alongside Python
+        # Rule 4: Data Science requires Math/ML/Stats anchor alongside programming
         elif capability_name == "data science":
             has_ds_anchor = bool(resume_skills.intersection({"machine learning", "statistical analysis", "pandas", "numpy"}))
-            if len(matched) == 1 and not has_ds_anchor:
+            if not has_ds_anchor:
                 coverage = min(coverage, 40.0)
                 alignment = "Partial Alignment"
             else:
                 alignment = "Strong Alignment" if coverage >= 80.0 else ("Partial Alignment" if coverage >= 45.0 else "Low Alignment")
 
-        # 5. Machine Learning requires actual ML models
-        elif capability_name == "machine learning":
-            has_ml_core = bool(resume_skills.intersection({"machine learning", "scikit-learn", "deep learning", "predictive modeling"}))
-            if not has_ml_core:
-                coverage = min(coverage, 35.0)
-                alignment = "Low Alignment"
-            else:
-                alignment = "Strong Alignment" if coverage >= 80.0 else ("Partial Alignment" if coverage >= 45.0 else "Low Alignment")
-
-        # 6. Single skill capabilities
-        elif len(relevant_job_skills) == 1:
-            alignment = "Strong Alignment" if coverage >= 70.0 else ("Partial Alignment" if coverage >= 40.0 else "Low Alignment")
+        # Rule 5: Standard multi-skill thresholds
         else:
             if coverage >= 80.0:
                 alignment = "Strong Alignment"

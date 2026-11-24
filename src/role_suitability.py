@@ -10,6 +10,12 @@ ROLE_PROFILES = {
         "core": ["sql", "power bi", "data visualization", "data analysis"],
         "supporting": ["excel", "tableau", "dashboard", "kpi", "python"],
     },
+    # In src/role_suitability.py -> inside ROLE_PROFILES:
+    "Java Backend Developer": {
+        "core": ["java", "spring boot", "sql"],
+        "supporting": ["mysql", "postgresql", "rest api", "git", "docker"],
+        "hard_gate": {"java", "spring boot"}
+    },
 
     "Data Scientist": {
         "core": ["python", "machine learning", "data analysis", "statistical analysis"],
