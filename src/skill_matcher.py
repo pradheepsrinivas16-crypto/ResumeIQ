@@ -321,16 +321,21 @@ def extract_skill_snippet(text, aliases, max_len=280):
                 break
         
         if has_alias:
-            # Check if skill is purely enclosed inside parentheses: e.g. "E-cart (HTML, CSS, JS)"
-            # where the enclosing clause is a parenthetical tech stack
-            paren_match = re.search(r"\([^)]*" + re.escape(matched_alias) + r"[^)]*\)", unit_lower)
-            words = set(re.findall(r"\b[a-zA-Z]+\b", unit_lower))
+            # Strip parenthetical tech tags to see if the skill is ALSO mentioned in the actual action sentence
+            text_outside_parens = re.sub(r"\([^)]*\)", " ", unit_lower)
+            mentioned_outside_parens = any(
+                re.search(r"(?<![a-zA-Z0-9])" + re.escape(a.lower()) + r"(?![a-zA-Z0-9])", text_outside_parens)
+                for a in aliases
+            )
+
+            words = set(re.findall(r"\b[a-zA-Z]+\b", text_outside_parens))
             has_action = bool(words.intersection(ACTION_VERBS))
 
-            if paren_match and not has_action:
+            if not mentioned_outside_parens:
+                # Skill appears ONLY inside a parenthetical tech tag -> Supporting (0.70x)
                 header_tag_units.append(clean_unit)
             elif has_action:
-                # If there's an action verb, check if the skill is outside the parens OR an active sentence
+                # Skill is actively named in a sentence with a delivery verb -> Demonstrated (1.0x)
                 action_units.append(clean_unit)
             else:
                 descriptive_units.append(clean_unit)
